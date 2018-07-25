@@ -84,7 +84,7 @@ def main():
         sys.exit(1)
     """ open the warning log file """
     try:
-        melib.LogFD = open(gvar.gOutput_Dir_Default + "warning.log", "wt")
+        melib.LogFD = open(gvar.gOutput_Dir_Default + "/warning.log", "wt")
     except:
         print("Open/Create Warning.log failed.")
         melib.LogFD = 0

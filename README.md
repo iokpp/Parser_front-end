@@ -51,7 +51,7 @@ TODO
     - 2. accessing chunk size distribution
     - 3. LBA
  * Add the support for the Sync I/O read
-
+ * Add the support for the read-ahead
 Known Issues
 FIXME
 =============
