@@ -38,16 +38,16 @@ sgPID_list = []
 
 
 '''
-sgReq_counter_per_PID_OP_dict is three-dimension nested dictionary.
+sgRequest_counter_per_pid_op is three-dimension nested dictionary.
 in which, contains the quantity of request associated with certain
 PID, operation and chunk size.
-eg: sgReq_counter_per_PID_OP_dict[pid][op][chunk] = 11332,
+eg: sgRequest_counter_per_pid_op[pid][op][chunk] = 11332,
 '''
-sgReq_counter_per_PID_OP_dict = melib.MultipleDimensionNestDict()
+sgRequest_counter_per_pid_op = melib.MultipleDimensionNestDict()
 
 
 '''
-sgPID_To_Req_LBA_dict is a dictionary, in which contains the LAB
+sgLBA_list_of_PID_OP is a dictionary, in which contains the LAB
 that associated with specific pid and operation.
 eg:
 {(pid, op):
@@ -55,27 +55,29 @@ eg:
 ...
 }
 '''
-sgPID_To_Req_LBA_dict = dict()
+sgLBA_list_of_PID_OP = dict()
 
 
 '''
-sgReqInfo_In_BlockLayer_DataBank is a multiple dimension nested dictionary.
+sgBIO_Remap_info_DataBank is a multiple dimension nested dictionary.
 { 'pid a' : --------first level branch, indicates the pid number
     {'write/read': ----- second level branch, indicates the operation
         { Chunk: --------- third level branch, indicates the chunk size
             { seq: --------- fifth level branch, indicates the sequence number of this req
-                 {
-                  timestamp1:  {lpd: ddd, len: 1313},
-                  timestamp2: {},
-                  }
+                {
+                lpd: ddd, 
+                len: 1313,
+                time: 1234234.4
+                },
+                  
             }
         }
     }   
 }
 eg. 
-[pid][op][chunk][seq][timestamp]={lba: "ddd", len: "ddd"}
+[pid][op][chunk][seq]={lba: "ddd", len: "ddd"}
 '''
-sgReqInfo_In_BlockLayer_DataBank = melib.MultipleDimensionNestDict()
+sgBIO_Remap_info_DataBank = melib.MultipleDimensionNestDict()
 
 
 '''
@@ -108,7 +110,7 @@ sgPID_Req_Property_DataBank = melib.MultipleDimensionNestDict()
 sgPID_Req_E2E_E2E_Duration_DataBank = melib.MultipleDimensionNestDict()
 
 '''
-sgCurrent_pid_req_info is the dictionary, in which contains the current
+sgCurrent_info is the dictionary, in which contains the current
 analyzing information of request that associated with specific PID.
 eg:
 [pid][len]=sss
@@ -116,7 +118,7 @@ eg:
 [pid][req_lba]=sss
 [pid][pre_event]=ss
 '''
-sgCurrent_pid_req_info = melib.MultipleDimensionNestDict()
+sgCurrent_info = melib.MultipleDimensionNestDict()
 
 '''
 sgE2E_e2e_distribution_by_pid_dic is one dimension dictionary,
@@ -155,10 +157,24 @@ class StatusClass:
 sgE2E_Analyzer_Stat = StatusClass()
 
 
-def update_current_pid_info_dict(pid, chunk, op, event):
-    sgCurrent_pid_req_info[pid][gvar.gmenu_len] = chunk
-    sgCurrent_pid_req_info[pid][gvar.gmenu_op] = op
-    sgCurrent_pid_req_info[pid][gvar.gmenu_pre_event] = event
+def update_current_pid_info_dict(pid, chunk, op, req_seq, event_seq, event, lba):
+    if chunk is not None:
+        sgCurrent_info[pid][gvar.gmenu_len] = chunk
+    if op is not None:
+        sgCurrent_info[pid][gvar.gmenu_op] = op
+    if req_seq is not None:
+        sgCurrent_info[pid][gvar.gmenu_req_seq] = req_seq
+    if event_seq is not None:
+        sgCurrent_info[pid][gvar.gmenu_event_seq] = event_seq
+    if event is not None:
+        sgCurrent_info[pid][gvar.gmenu_pre_event] = event
+    if lba is not None:
+        sgCurrent_info[pid][gvar.gmenu_lba] = lba
+
+    if event == gvar.gReqEvent_start:
+        ''' If this is the first event of request, we simply set
+        its lba as 0, it will be changed when hits remap event.'''
+        sgCurrent_info[pid][gvar.gmenu_lba] = '0'
 
 
 def adjust_pid_by_lba_op(pid, lba, op):
@@ -167,8 +183,8 @@ def adjust_pid_by_lba_op(pid, lba, op):
     match_pids = []
     ret_pid = None
 
-    for (temp_pid, temp_op) in sgPID_To_Req_LBA_dict.keys():
-        if lba in sgPID_To_Req_LBA_dict[(temp_pid, temp_op)]:
+    for (temp_pid, temp_op) in sgLBA_list_of_PID_OP.keys():
+        if lba in sgLBA_list_of_PID_OP[(temp_pid, temp_op)]:
             if temp_op == op:
                 match_num = match_num + 1
                 match_pids.append(temp_pid)
@@ -193,83 +209,144 @@ def adjust_pid_by_lba_op(pid, lba, op):
     return ret_pid
 
 
+def is_event_exist_in_request_databank(pid, op, vfs_len, seq, event_str):
+    for i in sgPID_Req_Property_DataBank[pid][op][vfs_len][seq].keys():
+        if event_str in sgPID_Req_Property_DataBank[pid][op][vfs_len][seq][i].keys():
+            return True
+    return False
+
+
+def add_to_db(pid, original_pid,  op, vfs_len, req_seq, event_seq, event, timestamp, lba, bytes):
+
+    line_no = gvar.gCurr_line
+    if (not is_event_exist_in_request_databank(pid, op, vfs_len, req_seq, event)):
+        sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq][event_seq][event][gvar.gmenu_time] = timestamp
+        sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq][event_seq][event][gvar.gmenu_len] = bytes
+        sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq][event_seq][event][gvar.gmenu_lba] = lba
+        if pid == original_pid:
+            ''' if this event appears in the other PID log, we don't want to
+            change current PID info.'''
+            update_current_pid_info_dict(pid, vfs_len, op, req_seq, event_seq, event, lba)
+    else:
+        melib.me_warning("Failed to add Line %d, since %s already exists in data bank. req_seq %d." %
+                         (line_no, event, req_seq))
+
+
 def add_leaf(dic):
 
     line_no = gvar.gCurr_line
     lba = None
     op = dic[gvar.gmenu_op]
     pid = dic[gvar.gmenu_PID]
+    orig_pid = dic[gvar.gmenu_OriginalPid]
     len_bytes = dic[gvar.gmenu_len]
     timestamp = dic[gvar.gmenu_time]
-    event = dic[gvar.gmenu_events]
+    event_name = dic[gvar.gmenu_events]
 
     if gvar.gmenu_lba in dic.keys():
         lba = dic[gvar.gmenu_lba]
 
-    vfs_len = sgCurrent_pid_req_info[pid][gvar.gmenu_len]  # get data length which passed from VFS
-    seq = sgReq_counter_per_PID_OP_dict[pid][op][vfs_len]  # get what sequence of this request
+    vfs_len = sgCurrent_info[pid][gvar.gmenu_len]  # get data length which passed from VFS
+    #seq = sgRequest_counter_per_pid_op[pid][op][vfs_len]  # get what sequence of this request
+    req_seq = sgCurrent_info[pid][gvar.gmenu_req_seq]
 
-    pre_event = sgCurrent_pid_req_info[pid][gvar.gmenu_pre_event]  # get the previous event of this request
-    event_seq = int(pre_event.split('-')[0])
-    pre_event_name = pre_event.split('-')[-1]
-    event_seq += 1
-    bak_event = event
-    event = str(event_seq) + '-' + event
+    #pre_event = sgCurrent_info[pid][gvar.gmenu_pre_event]  # get the previous event of this request
+    #event_seq = sgCurrent_info[pid][gvar.gmenu_event_seq]  #int(pre_event.split('-')[0])
 
-    pre_op = sgCurrent_pid_req_info[pid][gvar.gmenu_op]
+    #event_seq += 1
+
+    pre_op = sgCurrent_info[pid][gvar.gmenu_op]
     if pre_op != op:
         # if there is event which op is not the same VFS's, currently we just return. FIXME
         return
 
     if len_bytes is None:
-        melib.me_dbg("Line %d, event %s, no data_len assigned!" % (line_no, event))
+        melib.me_dbg("Line %d, event %s, no data_len assigned!" % (line_no, event_name))
     elif vfs_len != len_bytes:
+        #the sub-event data length is not consistent with the VFS, we now just return FIXME
         melib.me_warning("Line %d data_len %d is not consistent with VFS assigned %d."% \
                          (line_no, len_bytes, vfs_len))
+        return
       # melib.me_pprint_dict_scream(sgPID_Req_Property_DataBank[pid][op][vfs_len])
 
     # check if this event already exists in its request event list FIXME.
-    for i in sgPID_Req_Property_DataBank[pid][op][vfs_len][seq].keys():
-        if bak_event in sgPID_Req_Property_DataBank[pid][op][vfs_len][seq][i].keys():
-            melib.me_warning("Line %d, %s already exists in sgPID_Req_Property_DataBank." %
-                             (line_no, bak_event))
-            return
-    if lba and bak_event != 'block_bio_remap':
-        if lba != sgCurrent_pid_req_info[pid][gvar.gmenu_lba]:
-            melib.me_warning("Line %d, the lba of %s  does not exist in gCurrent_pid_req_info." %
-                             (line_no, bak_event))
-            return
+    if is_event_exist_in_request_databank(pid, op, vfs_len, req_seq, event_name):
+        max_seq = sgRequest_counter_per_pid_op[pid][op][vfs_len]
 
-    sgPID_Req_Property_DataBank[pid][op][vfs_len][seq][event_seq][bak_event][gvar.gmenu_time] = timestamp
-    sgPID_Req_Property_DataBank[pid][op][vfs_len][seq][event_seq][bak_event][gvar.gmenu_len] = len_bytes
-    update_current_pid_info_dict(pid, vfs_len, op, event)
+        if (req_seq != max_seq) and \
+                (not is_event_exist_in_request_databank(pid, op,vfs_len, max_seq, event_name)):
+            req_seq = max_seq
+            #event_seq = sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq].keys()[-1]
+            #event_seq += 1
+        else:
+            if lba and lba == sgCurrent_info[pid][gvar.gmenu_lba]:
+                melib.me_warning("Failed to add Line %d, since %s already exists in databank. "
+                                 "seq %d. max_seq %d." %
+                                 (line_no, event_name, req_seq, max_seq))
+                return
 
-    if bak_event == 'block_bio_remap':
-        sgReqInfo_In_BlockLayer_DataBank[pid][op][vfs_len][seq][timestamp][gvar.gmenu_lba] = lba
-        sgReqInfo_In_BlockLayer_DataBank[pid][op][vfs_len][seq][timestamp][gvar.gmenu_len] = len_bytes
-        sgCurrent_pid_req_info[pid][gvar.gmenu_lba] = lba
+    found_num = 0
+
+    if lba and event_name != 'block_bio_remap':
+        if lba != sgCurrent_info[pid][gvar.gmenu_lba]:
+            """ The lba of new event adding is not the current request lba,
+            this is possible in case of hardware completion interruption. """
+
+            if len_bytes:
+                for temp_len in sgBIO_Remap_info_DataBank[pid][op].keys():
+                    if temp_len == len_bytes:
+                        for temp_req_seq in sgBIO_Remap_info_DataBank[pid][op][temp_len].keys():
+                            if sgBIO_Remap_info_DataBank[pid][op][temp_len][temp_req_seq][gvar.gmenu_lba] == lba:
+                                if timestamp > sgBIO_Remap_info_DataBank[pid][op][vfs_len][temp_req_seq][gvar.gmenu_time]:
+                                    req_seq = temp_req_seq
+                                    vfs_len = temp_len
+                                    found_num += 1
+            if found_num == 0:
+                melib.me_warning("Line %d, the lba of %s  does not exist in sgCurrent_info." %
+                                 (line_no, event_name))
+                return
+            """ rebase the event sequence number """
+            #event_seq = sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq].keys()[-1]
+            #event_seq += 1
+            #event = str(event_seq) + '-' + bak_event
+    event_seq = sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq].keys()[-1]
+    event_seq += 1
+
+    if event_name == 'block_bio_remap':
+        sgBIO_Remap_info_DataBank[pid][op][vfs_len][req_seq][gvar.gmenu_lba] = lba
+        sgBIO_Remap_info_DataBank[pid][op][vfs_len][req_seq][gvar.gmenu_time] = timestamp
+        sgBIO_Remap_info_DataBank[pid][op][vfs_len][req_seq][gvar.gmenu_len] = len_bytes
+
+    add_to_db(pid, orig_pid, op, vfs_len, req_seq, event_seq, event_name, timestamp, lba, len_bytes)
 
 
-def add_one_new_pid_branch(property_dict):
+def add_one_new_pid_branch(dict):
 
-    pid = property_dict[gvar.gmenu_PID]
-    op = property_dict[gvar.gmenu_op]
-    chunk = property_dict[gvar.gmenu_len]
-    event = property_dict[gvar.gmenu_events]
-    timestamp = property_dict[gvar.gmenu_time]
-
+    pid = dict[gvar.gmenu_PID]
+    op = dict[gvar.gmenu_op]
+    chunk = dict[gvar.gmenu_len]
+    event = dict[gvar.gmenu_events]
+    timestamp = dict[gvar.gmenu_time]
+    #orig_pid = dict[gvar.gmenu_OriginalPid]
     sgPID_list.append(pid)  # add this pid into pid list
-    bak_event = event
-    event = '1-'+event
-    sgReq_counter_per_PID_OP_dict[pid][op][chunk] = 1  # this is the first req associated with PID
+    #bak_event = event
+    #event = '1-'+event
+    seq = sgRequest_counter_per_pid_op[pid][op][chunk] = 1  # this is the first req associated with PID
+    '''
     sgPID_Req_Property_DataBank[pid][op][chunk][1][1][bak_event][gvar.gmenu_time] = timestamp
     sgPID_Req_Property_DataBank[pid][op][chunk][1][1][bak_event][gvar.gmenu_len] = chunk
-
-    update_current_pid_info_dict(pid, chunk, op, event)
+    sgPID_Req_Property_DataBank[pid][op][chunk][1][1][bak_event][gvar.gmenu_lba] = None
+    '''
+    add_to_db(pid, pid, op, chunk, seq, seq, event, timestamp, None, chunk)
+    #update_current_pid_info_dict(pid, chunk, op, seq, seq, event, '0')
 
 
 def add_block_leaf(property_dict):
-
+    """
+    Add this block layer event into the data bank.
+    :param property_dict:
+    :return: None
+    """
     line_no = gvar.gCurr_line
     blk_dic = property_dict.copy()
     pid = blk_dic[gvar.gmenu_PID]
@@ -281,28 +358,27 @@ def add_block_leaf(property_dict):
         lba = None
 
     if gvar.gmenu_op not in blk_dic.keys() or blk_dic[gvar.gmenu_op] is None:
-        # This event hasn't assigned the direction of request.
+        # This event hasn't assigned the operation type (write/read).
         melib.me_dbg("line: %d, pid %s No operation type assigned!" %
                      (line_no, pid))
-        blk_dic[gvar.gmenu_op] = sgCurrent_pid_req_info[pid][gvar.gmenu_op]
+        blk_dic[gvar.gmenu_op] = sgCurrent_info[pid][gvar.gmenu_op]
         op = blk_dic[gvar.gmenu_op]
     else:
         op = blk_dic[gvar.gmenu_op]
 
     if event == "block_bio_remap":
-        sgPID_To_Req_LBA_dict.setdefault((pid,
-                                          op), []).append(lba)
-        melib.me_dbg("Event: %s, sgPID_To_Req_LBA_dict: %s !" %
-                     (event, sgPID_To_Req_LBA_dict))
+        sgLBA_list_of_PID_OP.setdefault((pid, op), []).append(lba)
+        melib.me_dbg("Event: %s, sgLBA_list_of_PID_OP: %s !" %
+                     (event, sgLBA_list_of_PID_OP))
     else:
         if lba is not None:
-            if ((pid, op) in sgPID_To_Req_LBA_dict.keys() and lba not in sgPID_To_Req_LBA_dict[(pid, op)]) or \
-                    ((pid, op) not in sgPID_To_Req_LBA_dict.keys()):
+            if ((pid, op) in sgLBA_list_of_PID_OP.keys() and lba not in sgLBA_list_of_PID_OP[(pid, op)]) or \
+                    ((pid, op) not in sgLBA_list_of_PID_OP.keys()):
 
                 ''' If current lba is not in this pid lab dictionary, we should look for
-                if this event associated with lab belongs to other pid.
+                whether this event associated with lab belongs to other pid.
                 '''
-                ret = adjust_pid_by_lba_op(pid, lba, op)
+                ret = adjust_pid_by_lba_op(pid, lba, op)  # try to find out a right PID
                 if ret is None:
                     # cannot find a pid associated with this request, currently
                     # we just don't add this event into data bank. FIXME
@@ -328,8 +404,8 @@ def add_scsi_leaf(property_dict):
     else:
         lba = None
     if lba is not None:
-        if ((pid, op) in sgPID_To_Req_LBA_dict.keys() and lba not in sgPID_To_Req_LBA_dict[(pid, op)]) or\
-                ((pid, op) not in sgPID_To_Req_LBA_dict.keys()):
+        if ((pid, op) in sgLBA_list_of_PID_OP.keys() and lba not in sgLBA_list_of_PID_OP[(pid, op)]) or\
+                ((pid, op) not in sgLBA_list_of_PID_OP.keys()):
             ''' If current lba is not in this dictionary, we should check if
              this event belongs to other pid.
             '''
@@ -354,7 +430,7 @@ def add_others_leaf(property_dict):
     if temp_dic[gvar.gmenu_op] is None:
         # This event hasn't assigned the direction of request.
         melib.me_dbg("No operation type assigned!")
-        temp_dic[gvar.gmenu_op] = sgCurrent_pid_req_info[pid][gvar.gmenu_op]
+        temp_dic[gvar.gmenu_op] = sgCurrent_info[pid][gvar.gmenu_op]
     #    else:
     #        op = temp_dic[gvar.gmenu_op]
 
@@ -366,6 +442,7 @@ def add_one_new_leaf(property_dict):
     func = property_dict.get(gvar.gmenu_func)
 
     if func is None:
+        ''' If there is no function name, we explicitly reject adding.'''
         return
 
     if func in gvar.gE2E_events_funcs_filter_dict['block']:
@@ -384,43 +461,58 @@ def add_one_new_leaf(property_dict):
 
 def add_new_req_into_tree(property_dict):
     pid = property_dict[gvar.gmenu_PID]
+    orig_pid = property_dict[gvar.gmenu_OriginalPid]
     len_bytes = property_dict[gvar.gmenu_len]
     op = property_dict[gvar.gmenu_op]
     event = property_dict[gvar.gmenu_events]
     timestamp = property_dict[gvar.gmenu_time]
 
-    sgReq_counter_per_PID_OP_dict[pid][op][len_bytes] += 1
-    req_seq = sgReq_counter_per_PID_OP_dict[pid][op][len_bytes]
-    bak_event = event
-    event = '1-'+event
+    sgRequest_counter_per_pid_op[pid][op][len_bytes] += 1
+    #seq = sgRequest_counter_per_pid_op[pid][op][len_bytes]
+    req_seq = sgRequest_counter_per_pid_op[pid][op][len_bytes]
+    #bak_event = event
+    #event = '1-'+event  # this is the first event of request.
+    '''
     sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq][1][bak_event][gvar.gmenu_time] = timestamp
     sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq][1][bak_event][gvar.gmenu_len] = len_bytes
-
-    update_current_pid_info_dict(pid, len_bytes, op, event)
+    sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq][1][bak_event][gvar.gmenu_lba] = None
+    '''
+    add_to_db(pid, orig_pid, op, len_bytes, req_seq, 1, event, timestamp, None, len_bytes)
+    #update_current_pid_info_dict(pid, len_bytes, op, req_seq, 1, event, '0')
 
 
 def add_to_pid_req_property_tree(property_dict):
+
+    """
+    Fill in the data bank according to property_dict, in which contains
+    the event information by the form of dictionary.
+    :param property_dict:
+    :return: None
+    """
 
     pid = property_dict[gvar.gmenu_PID]
     event = property_dict[gvar.gmenu_events]
 
     if gvar.gmenu_len in property_dict.keys() and property_dict[gvar.gmenu_len] is not None:
+        ''' there is data length field in this event dictionary '''
         len_bytes = property_dict[gvar.gmenu_len]
     else:
         len_bytes = None
     if gvar.gmenu_op in property_dict.keys() and property_dict[gvar.gmenu_op] is not None:
+        ''' there is operational type field in this event dictionary '''
         op = property_dict[gvar.gmenu_op]
     else:
         op = None
 
-    if event is gvar.gReqEvent_start :
+    if event is gvar.gReqEvent_start:
         # This is a new request.
         if pid not in sgPID_list and \
                         pid not in sgPID_Req_Property_DataBank.keys():
-            # PID doesn't exist.
+            ''' This PID first time appears, create a new pid branch. '''
             add_one_new_pid_branch(property_dict)
         elif pid in sgPID_list and \
                 pid in sgPID_Req_Property_DataBank.keys():
+            ''' This PID has been existing in the data bank. '''
             if op in sgPID_Req_Property_DataBank[pid].keys() and \
                     len_bytes not in sgPID_Req_Property_DataBank[pid][op].keys():
                 add_one_new_pid_branch(property_dict)
@@ -434,11 +526,19 @@ def add_to_pid_req_property_tree(property_dict):
             melib.me_warning(sgPID_list)
             melib.me_warning(sgPID_Req_Property_DataBank.keys())
     elif event is not gvar.gReqEvent_start:
+        ''' This is not the first event of request. '''
         if pid in sgPID_Req_Property_DataBank.keys():
             add_one_new_leaf(property_dict)
         else:
+            ''' If the PID doesn't exist in the data bank, then check if its LBA could
+            be associated with one request in the data bank.'''
             lba = property_dict.get(gvar.gmenu_lba)
-            if lba is not None and pid is not None and op is not None:
+            if lba is not None and \
+                    pid is not None \
+                    and op is not None:
+                ''' Specified PID doesn't exist in the data bank,
+                but LBA, PID and OP are all not None, try to find
+                out its real PID. '''
                 adjust_pid = adjust_pid_by_lba_op(pid, lba, op)
                 if adjust_pid is not None:
                     property_dict[gvar.gmenu_PID] = adjust_pid
@@ -501,6 +601,7 @@ def e2e_file_parser(lines):
         cur_pid = task_pid.rsplit(b'-')[-1]  # get PID
         tmp_req_parser_property_dict[gvar.gmenu_task] = task_pid.rsplit(b'-')[0]
         tmp_req_parser_property_dict[gvar.gmenu_PID] = task_pid  # cur_pid
+        tmp_req_parser_property_dict[gvar.gmenu_OriginalPid] = task_pid
 
         timestamp = parts[fields.index("TIMESTAMP")+gap].split(b':')[0]  # get time stamp of this line
         tmp_req_parser_property_dict[gvar.gmenu_time] = timestamp

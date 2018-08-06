@@ -25,18 +25,17 @@ fields = ["None"]
 
 def parsing_one_line(line):
     """
-    This function is to parse the input lines, and
+    This function is to parse the input line, and
     build up sgPID_Req_Property_DataBank.
     :param
-        lines: the log input
-    :return: if success, True; otherwise, False.
+        lines: one line string of log file
+    :return: if success, the parsed event dictionary; otherwise, False.
     """
     # find start line:
     global fields
     line_no = gvar.gCurr_line
 
     tmp_req_parser_property_dict = {}
-    #func_dict = {}
 
     if melib.is_skip_this_line(line):
         return False
@@ -77,6 +76,7 @@ def parsing_one_line(line):
     cur_pid = task_pid.rsplit(b'-')[-1]  # get PID
     tmp_req_parser_property_dict[gvar.gmenu_task] = task_pid.rsplit(b'-')[0]
     tmp_req_parser_property_dict[gvar.gmenu_PID] = task_pid  # cur_pid
+    tmp_req_parser_property_dict[gvar.gmenu_OriginalPid] = task_pid
 
     timestamp = parts[fields.index("TIMESTAMP") + gap].split(b':')[0]  # get time stamp of this line
     tmp_req_parser_property_dict[gvar.gmenu_time] = timestamp
@@ -108,18 +108,26 @@ def parsing_one_line(line):
         # merge two dictionaries into one
         tmp_req_parser_property_dict.update(function_dict)
 
-    return tmp_req_parser_property_dict
+    return tmp_req_parser_property_dict  # success, return the parsed dictionary.
 
 
 def line_by_line_parser(original_file_lines, is_e2e, is_wa):
-
+    """
+    To parse this line string and fill in the sgPID_Req_Property_DataBank and
+    WA dateBank.
+    :param original_file_lines: The original line string
+    :param is_e2e: True or False
+    :param is_wa: True or False
+    :return: None
+    """
     gvar.gCurr_line = 0
 
     for line_str in original_file_lines:
+        ''' take one line from log '''
         gvar.gCurr_line += 1
         func_dict = parsing_one_line(line_str)
         if func_dict:
-
+            ''' Parsing success'''
             if is_e2e:
                 try:
                     e2e.add_to_pid_req_property_tree(func_dict)

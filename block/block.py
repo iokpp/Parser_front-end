@@ -89,17 +89,15 @@ def blk_functions2dict_parser(funcs):
     ret_dict = {}
     funcs_list = re.split(r"[:()\s]+", funcs)
 
-    if funcs_list[0] in gE2E_events_funcs_filter_dict['block']:
-        #ret_dict[gmenu_func] = funcs_list[0]
-
-        if funcs_list[0] in gFuns_dict['block']:
-            # this is just a function trace log, currently, we have nothing.
-            # ret_dict[gmenu_events] = ret_dict[gmenu_func]
-            return None
-        elif funcs_list[0] in gEvents_dict['block']:
-            # this is a block event, need to further parser.
-            ret_dict = parser_block_trace_event_str(funcs)
+    if funcs_list[0] in gFuns_dict['block']:
+        # this is just a function trace log, currently, we have nothing.
+        # ret_dict[gmenu_events] = ret_dict[gmenu_func]
+        return None
+    elif funcs_list[0] in gEvents_dict['block']:
+        # this is a block event, need to further parser.
+        ret_dict = parser_block_trace_event_str(funcs)
         return ret_dict
     else:
         return None
+
 

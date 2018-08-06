@@ -37,15 +37,18 @@ gSectorsPerBlock = gSCSI_LogicalBlockSize_Bytes / gLogicalSectorSize_Bytes
 
 gmenu_task = 'Task'
 gmenu_PID = 'PID'
+gmenu_OriginalPid = 'OrigPID'
 gmenu_func = 'Function'
 gmenu_len = 'Len_bytes'
-gmenu_events = 'Event_str'
+gmenu_events = 'Event_Str'
 gmenu_pre_event = 'Pre_event_str'
 gmenu_op = 'Op_W_R'
 gmenu_time = 'Timestamp'
 gmenu_lba = 'LBA'  # BY 512 BYTES
 gmenu_sectors = 'Sectors'
 gmenu_blocks = 'Blocks'
+gmenu_req_seq = 'Request_sequence'
+gmenu_event_seq = 'Event_sequence'
 gmenu_reqs_unplug = 'plug_reqs_unplug'
 
 gMax = 'MAX'
@@ -199,6 +202,7 @@ gE2E_HW_transfer_e2e_flags = [
 gWA_HW_transfer_completion_flags = [
                 'scsi_dispatch_cmd_done'
 ]
+
 
 def analyzer_header_of_file(line):
 

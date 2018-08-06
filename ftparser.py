@@ -21,7 +21,7 @@ import e2e
 import wa
 import iokpp
 
-VERSION = "0.0.1-20180601"
+VERSION = "0.0.2-20180701"
 
 gFileIn = " "
 gKeep_Files = 0  # used to control if delete the files created
@@ -103,25 +103,6 @@ def main():
     if is_e2e or is_wa:
         iokpp.iokpp_main(lines, is_e2e, is_wa)
 
-
-        '''
-        try:
-            e2e.e2e_main(lines, gPIDs_Files_dic)
-        except melib.DefinedExcepton as e:
-            print("Failed parsing the input file: %s" % gFileIn)
-            print(e)
-            sys.exit(1)
-        finally:
-            sys.exit(0)
-
-        if is_wa:
-        try:
-            wa.wa_main(lines)
-        except melib.DefinedExcepton as e:
-            print("Failed doing WA for file %s" % gFileIn)
-            print(e)
-            sys.exit(1)
-        '''
     if not gKeep_Files:
         parser_post_dis()
     if melib.LogFD:
