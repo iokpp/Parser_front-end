@@ -16,32 +16,34 @@ import sys
 import os
 import re
 from lib import *
-from gvar import *
+import gvar
+import conf
 
 
 def ext4_functions2dict_parser(funcs):
     ret_dict = {}
     funcs_list = re.split(r"[:()\s]+", funcs)
 
-    if funcs_list[0] in gE2E_events_funcs_filter_dict['ext4']:
-        ret_dict[gmenu_func] = funcs_list[0]
 
-        if ret_dict[gmenu_func] in gFuns_dict['ext4']:
+    if funcs_list[0] in conf.gE2E_events_funcs_filter_dict['ext4']:
+        ret_dict[gvar.gmenu_func] = funcs_list[0]
+
+        if ret_dict[gvar.gmenu_func] in conf.gFuns_dict['ext4']:
             # this is just a function trace log
-            ret_dict[gmenu_events] = ret_dict[gmenu_func]
-        elif ret_dict[gmenu_func] in gEvents_dict['ext4']:
+            ret_dict[gvar.gmenu_events] = ret_dict[gvar.gmenu_func]
+        elif ret_dict[gvar.gmenu_func] in conf.gEvents_dict['ext4']:
             # this is a block event, need to further parser.
             # but currently, we only return function name
-            ret_dict[gmenu_events] = ret_dict[gmenu_func]
+            ret_dict[gvar.gmenu_events] = ret_dict[gvar.gmenu_func]
 
         if "write" in funcs:
-            ret_dict[gmenu_op] = gWrite_Req
+            ret_dict[gvar.gmenu_op] = gvar.gWrite_Req
         elif "read" in funcs:
-            ret_dict[gmenu_op] = gRead_Req
+            ret_dict[gvar.gmenu_op] = gvar.gRead_Req
         else:
-            ret_dict[gmenu_op] = None
+            ret_dict[gvar.gmenu_op] = None
 
-        ret_dict[gmenu_len] = None
+        ret_dict[gvar.gmenu_len] = None
 
         return ret_dict
     else:

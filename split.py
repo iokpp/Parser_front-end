@@ -16,6 +16,7 @@ from fs import ext4
 from block import block
 from scsi import scsi
 import gvar
+import conf
 from lib import melib
 
 sgSCSI_BLOCK_SIZE_BYTE = gvar.gSCSI_LogicalBlockSize_Bytes
@@ -117,11 +118,11 @@ def split_file_by_pid(lines):
 
                 func_str = line.strip().split(' ', fields.index("FUNCTION")+gap)[-1]  # split by space until "FUNCTION"
 
-                if func in gvar.gEvents_dict['block']:  # sgBlock_Key_Trace_Events_list:  # filter Block events
+                if func in conf.gEvents_dict['block']:  # sgBlock_Key_Trace_Events_list:  # filter Block events
                     event_dict = block.blk_functions2dict_parser(func_str)
                     if event_dict[gvar.gmenu_func] != 'block_unplug' and event_dict[gvar.gmenu_func] != 'block_plug':
                         spec_func = 1
-                elif func in gvar.gEvents_dict['scsi']:  # sgSCSI_Key_Trace_Events_list:  # filter SCSI events
+                elif func in conf.gEvents_dict['scsi']:  # sgSCSI_Key_Trace_Events_list:  # filter SCSI events
                     event_dict = scsi.scsi_functions2dict_parser(func_str)
                     spec_func = 1
 

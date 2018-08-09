@@ -20,6 +20,7 @@ import json
 import pprint
 from lib import melib
 import gvar
+import conf
 from fs import vfs
 from fs import ext4
 from block import block
@@ -38,25 +39,27 @@ sgPID_list = []
 
 
 '''
-sgRequest_counter_per_pid_op is three-dimension nested dictionary.
+sgItems_counter_per_E2E is three-dimension nested dictionary.
 in which, contains the quantity of request associated with certain
 PID, operation and chunk size.
-eg: sgRequest_counter_per_pid_op[pid][op][chunk] = 11332,
+eg: sgItems_counter_per_E2E[pid][op][e2e_name][chunk] = 11332,
 '''
-sgRequest_counter_per_pid_op = melib.MultipleDimensionNestDict()
+sgItems_counter_per_E2E = melib.MultipleDimensionNestDict()
 
 
 '''
-sgLBA_list_of_PID_OP is a dictionary, in which contains the LAB
+sgLBA_list_of_PID_OP_chunk is a dictionary, in which contains the LAB
 that associated with specific pid and operation.
 eg:
-{(pid, op):
+{(pid, op, chunk):
     ['2314', '4587e',...], 
 ...
 }
 '''
-sgLBA_list_of_PID_OP = dict()
+sgLBA_list_of_PID_OP_chunk = dict()
 
+''' {(pid, op, e2e_name, chunk, LAB): item_number}'''
+sgIndex_of_LBA_in_DB = dict()
 
 '''
 sgBIO_Remap_info_DataBank is a multiple dimension nested dictionary.
@@ -79,35 +82,35 @@ eg.
 '''
 sgBIO_Remap_info_DataBank = melib.MultipleDimensionNestDict()
 
-
 '''
-pid to request property dictionary, its topology, eg:
+event property dictionary grouped by event, its topology, eg:
 {'pid a':  ----> first level branch, indicates the PID associated with this item 
     { write/read: ----> chunk size
-        {'chunk size':  ----> indicates this is a write or read
-            {'req_seq 1':  ----> indicates the numerical order of this request 
-                {event_seq 1: ----> indicates the sequence number of this event
-                    { event-name':
-                        {'timestamp':'233424.4343', 'chunk':'1024'/None, ...
-                        }
+        {'e2e name':  ----> indicates this is a write or read
+            {'chunk size':  ----> indicates the e2e name in the user configure list
+                { seq 1: ----> indicates the sequence number of this pair e2e
+                    { 0:
+                        {'timestamp':'233424.4343', 'LBA':'ddd'/None },
+                       1:
+                        {'timestamp':'233424.4343', 'LBA':'ddd'/None}
                     },
                 },
              ...
-            },
+            },  
         ...
         },
      ...
     },
  ...
 }
-eg:
-sgPID_Req_Property_DataBank[pid][op][chunk][req_seq][event_seq][event_name][timestamp] = 4546565.545
-sgPID_Req_Property_DataBank[pid][op][chunk][req_seq][event_seq][event_name][len_bytes] = 545
+usage:
+sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][seq n][0/1][timestamp] = 4546565.545
+sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][seq n][0/1][LBA] = '12121'
 '''
-sgPID_Req_Property_DataBank = melib.MultipleDimensionNestDict()
+sgEvent_Property_DataBank_groupbyevent = melib.MultipleDimensionNestDict()
 
 # [pid][op][chunk][req_seq][e2e_seq][e2e_name]=duration
-sgPID_Req_E2E_E2E_Duration_DataBank = melib.MultipleDimensionNestDict()
+sgE2E_Duration_DataBank = melib.MultipleDimensionNestDict()
 
 '''
 sgCurrent_info is the dictionary, in which contains the current
@@ -183,8 +186,8 @@ def adjust_pid_by_lba_op(pid, lba, op):
     match_pids = []
     ret_pid = None
 
-    for (temp_pid, temp_op) in sgLBA_list_of_PID_OP.keys():
-        if lba in sgLBA_list_of_PID_OP[(temp_pid, temp_op)]:
+    for (temp_pid, temp_op, temp_chunk) in sgLBA_list_of_PID_OP_chunk.keys():
+        if lba in sgLBA_list_of_PID_OP_chunk[(temp_pid, temp_op, temp_chunk)]:
             if temp_op == op:
                 match_num = match_num + 1
                 match_pids.append(temp_pid)
@@ -208,280 +211,111 @@ def adjust_pid_by_lba_op(pid, lba, op):
 
     return ret_pid
 
-
+'''
 def is_event_exist_in_request_databank(pid, op, vfs_len, seq, event_str):
-    for i in sgPID_Req_Property_DataBank[pid][op][vfs_len][seq].keys():
-        if event_str in sgPID_Req_Property_DataBank[pid][op][vfs_len][seq][i].keys():
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][e][]
+    for i in sgEvent_Property_DataBank_groupbyevent[pid][op][vfs_len][seq].keys():
+        if event_str in sgEvent_Property_DataBank_groupbyevent[pid][op][vfs_len][seq][i].keys():
             return True
     return False
+'''
 
 
-def add_to_db(pid, original_pid,  op, vfs_len, req_seq, event_seq, event, timestamp, lba, bytes):
+def add_subtrahend_to_db(event_info_dict, e2e_name, item_seq):
+    pid = event_info_dict[gvar.gmenu_PID]
+    op = event_info_dict[gvar.gmenu_op]
+    chunk = event_info_dict[gvar.gmenu_len]
+    event = event_info_dict[gvar.gmenu_events]
+    timestamp = event_info_dict[gvar.gmenu_time]
+    lba = event_info_dict[gvar.gmenu_lba]
+    lines = gvar.gCurr_line
 
-    line_no = gvar.gCurr_line
-    if (not is_event_exist_in_request_databank(pid, op, vfs_len, req_seq, event)):
-        sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq][event_seq][event][gvar.gmenu_time] = timestamp
-        sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq][event_seq][event][gvar.gmenu_len] = bytes
-        sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq][event_seq][event][gvar.gmenu_lba] = lba
-        if pid == original_pid:
-            ''' if this event appears in the other PID log, we don't want to
-            change current PID info.'''
-            update_current_pid_info_dict(pid, vfs_len, op, req_seq, event_seq, event, lba)
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq].get(0):
+        melib.me_warning("Failed to add Line %d, since %s already exists in data bank. e2e %s, sub_event %s." %
+                         (lines, event, e2e_name, item_seq))
+
     else:
-        melib.me_warning("Failed to add Line %d, since %s already exists in data bank. req_seq %d." %
-                         (line_no, event, req_seq))
+        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][0][gvar.gmenu_time] = timestamp
+        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][0][gvar.gmenu_lba] = lba
+
+    sgIndex_of_LBA_in_DB[(pid, op, e2e_name, chunk, lba)] = item_seq
 
 
-def add_leaf(dic):
+def add_minuend_to_db(event_info_dict, e2e_name, item_seq):
+    pid = event_info_dict[gvar.gmenu_PID]
+    op = event_info_dict[gvar.gmenu_op]
+    chunk = event_info_dict[gvar.gmenu_len]
+    event = event_info_dict[gvar.gmenu_events]
+    timestamp = event_info_dict[gvar.gmenu_time]
+    lba = event_info_dict[gvar.gmenu_lba]
+    lines = gvar.gCurr_line
 
-    line_no = gvar.gCurr_line
-    lba = None
-    op = dic[gvar.gmenu_op]
-    pid = dic[gvar.gmenu_PID]
-    orig_pid = dic[gvar.gmenu_OriginalPid]
-    len_bytes = dic[gvar.gmenu_len]
-    timestamp = dic[gvar.gmenu_time]
-    event_name = dic[gvar.gmenu_events]
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq].get(1):
+        melib.me_warning("Failed to add Line %d, since %s already exists in data bank. e2e %s, sub_event %s." %
+                         (lines, event, e2e_name, item_seq))
 
-    if gvar.gmenu_lba in dic.keys():
-        lba = dic[gvar.gmenu_lba]
-
-    vfs_len = sgCurrent_info[pid][gvar.gmenu_len]  # get data length which passed from VFS
-    #seq = sgRequest_counter_per_pid_op[pid][op][vfs_len]  # get what sequence of this request
-    req_seq = sgCurrent_info[pid][gvar.gmenu_req_seq]
-
-    #pre_event = sgCurrent_info[pid][gvar.gmenu_pre_event]  # get the previous event of this request
-    #event_seq = sgCurrent_info[pid][gvar.gmenu_event_seq]  #int(pre_event.split('-')[0])
-
-    #event_seq += 1
-
-    pre_op = sgCurrent_info[pid][gvar.gmenu_op]
-    if pre_op != op:
-        # if there is event which op is not the same VFS's, currently we just return. FIXME
-        return
-
-    if len_bytes is None:
-        melib.me_dbg("Line %d, event %s, no data_len assigned!" % (line_no, event_name))
-    elif vfs_len != len_bytes:
-        #the sub-event data length is not consistent with the VFS, we now just return FIXME
-        melib.me_warning("Line %d data_len %d is not consistent with VFS assigned %d."% \
-                         (line_no, len_bytes, vfs_len))
-        return
-      # melib.me_pprint_dict_scream(sgPID_Req_Property_DataBank[pid][op][vfs_len])
-
-    # check if this event already exists in its request event list FIXME.
-    if is_event_exist_in_request_databank(pid, op, vfs_len, req_seq, event_name):
-        max_seq = sgRequest_counter_per_pid_op[pid][op][vfs_len]
-
-        if (req_seq != max_seq) and \
-                (not is_event_exist_in_request_databank(pid, op,vfs_len, max_seq, event_name)):
-            req_seq = max_seq
-            #event_seq = sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq].keys()[-1]
-            #event_seq += 1
-        else:
-            if lba and lba == sgCurrent_info[pid][gvar.gmenu_lba]:
-                melib.me_warning("Failed to add Line %d, since %s already exists in databank. "
-                                 "seq %d. max_seq %d." %
-                                 (line_no, event_name, req_seq, max_seq))
-                return
-
-    found_num = 0
-
-    if lba and event_name != 'block_bio_remap':
-        if lba != sgCurrent_info[pid][gvar.gmenu_lba]:
-            """ The lba of new event adding is not the current request lba,
-            this is possible in case of hardware completion interruption. """
-
-            if len_bytes:
-                for temp_len in sgBIO_Remap_info_DataBank[pid][op].keys():
-                    if temp_len == len_bytes:
-                        for temp_req_seq in sgBIO_Remap_info_DataBank[pid][op][temp_len].keys():
-                            if sgBIO_Remap_info_DataBank[pid][op][temp_len][temp_req_seq][gvar.gmenu_lba] == lba:
-                                if timestamp > sgBIO_Remap_info_DataBank[pid][op][vfs_len][temp_req_seq][gvar.gmenu_time]:
-                                    req_seq = temp_req_seq
-                                    vfs_len = temp_len
-                                    found_num += 1
-            if found_num == 0:
-                melib.me_warning("Line %d, the lba of %s  does not exist in sgCurrent_info." %
-                                 (line_no, event_name))
-                return
-            """ rebase the event sequence number """
-            #event_seq = sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq].keys()[-1]
-            #event_seq += 1
-            #event = str(event_seq) + '-' + bak_event
-    event_seq = sgPID_Req_Property_DataBank[pid][op][vfs_len][req_seq].keys()[-1]
-    event_seq += 1
-
-    if event_name == 'block_bio_remap':
-        sgBIO_Remap_info_DataBank[pid][op][vfs_len][req_seq][gvar.gmenu_lba] = lba
-        sgBIO_Remap_info_DataBank[pid][op][vfs_len][req_seq][gvar.gmenu_time] = timestamp
-        sgBIO_Remap_info_DataBank[pid][op][vfs_len][req_seq][gvar.gmenu_len] = len_bytes
-
-    add_to_db(pid, orig_pid, op, vfs_len, req_seq, event_seq, event_name, timestamp, lba, len_bytes)
+    else:
+        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][1][gvar.gmenu_time] = timestamp
+        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][1][gvar.gmenu_lba] = lba
 
 
-def add_one_new_pid_branch(dict):
+def add_new_branch_into_tree(event_info_dict, e2e_match_dict):
 
-    pid = dict[gvar.gmenu_PID]
-    op = dict[gvar.gmenu_op]
-    chunk = dict[gvar.gmenu_len]
-    event = dict[gvar.gmenu_events]
-    timestamp = dict[gvar.gmenu_time]
-    #orig_pid = dict[gvar.gmenu_OriginalPid]
+    pid = event_info_dict[gvar.gmenu_PID]
+    op = event_info_dict[gvar.gmenu_op]
+    chunk = event_info_dict[gvar.gmenu_len]
+
     sgPID_list.append(pid)  # add this pid into pid list
-    #bak_event = event
-    #event = '1-'+event
-    seq = sgRequest_counter_per_pid_op[pid][op][chunk] = 1  # this is the first req associated with PID
-    '''
-    sgPID_Req_Property_DataBank[pid][op][chunk][1][1][bak_event][gvar.gmenu_time] = timestamp
-    sgPID_Req_Property_DataBank[pid][op][chunk][1][1][bak_event][gvar.gmenu_len] = chunk
-    sgPID_Req_Property_DataBank[pid][op][chunk][1][1][bak_event][gvar.gmenu_lba] = None
-    '''
-    add_to_db(pid, pid, op, chunk, seq, seq, event, timestamp, None, chunk)
-    #update_current_pid_info_dict(pid, chunk, op, seq, seq, event, '0')
+
+    for i in e2e_match_dict.keys():
+        # This is the first req associated with PID/op/e2e/chunk
+        e2e_name = conf.gE2E_durations_trace[i]  # get the e2e name by its index
+        item_seq = sgItems_counter_per_E2E[pid][op][e2e_name][chunk] = 1 # this is the first item of e2e recode.
+        seq = e2e_match_dict[i]  # get its event index, 0/1
+        if seq == 0:
+            # here only adds first event, because so far it doesn't exist other event in this pid recode.
+            add_subtrahend_to_db(event_info_dict, e2e_name, item_seq)
+        #elif seq == 1:
+        #   add_minuend_to_db(event_info_dict, e2e_name, item_seq)
 
 
-def add_block_leaf(property_dict):
-    """
-    Add this block layer event into the data bank.
-    :param property_dict:
-    :return: None
-    """
-    line_no = gvar.gCurr_line
-    blk_dic = property_dict.copy()
-    pid = blk_dic[gvar.gmenu_PID]
-    event = blk_dic[gvar.gmenu_events]
-
-    if gvar.gmenu_lba in blk_dic.keys() and blk_dic[gvar.gmenu_lba] is not None:
-        lba = blk_dic[gvar.gmenu_lba]
-    else:
-        lba = None
-
-    if gvar.gmenu_op not in blk_dic.keys() or blk_dic[gvar.gmenu_op] is None:
-        # This event hasn't assigned the operation type (write/read).
-        melib.me_dbg("line: %d, pid %s No operation type assigned!" %
-                     (line_no, pid))
-        blk_dic[gvar.gmenu_op] = sgCurrent_info[pid][gvar.gmenu_op]
-        op = blk_dic[gvar.gmenu_op]
-    else:
-        op = blk_dic[gvar.gmenu_op]
-
-    if event == "block_bio_remap":
-        sgLBA_list_of_PID_OP.setdefault((pid, op), []).append(lba)
-        melib.me_dbg("Event: %s, sgLBA_list_of_PID_OP: %s !" %
-                     (event, sgLBA_list_of_PID_OP))
-    else:
-        if lba is not None:
-            if ((pid, op) in sgLBA_list_of_PID_OP.keys() and lba not in sgLBA_list_of_PID_OP[(pid, op)]) or \
-                    ((pid, op) not in sgLBA_list_of_PID_OP.keys()):
-
-                ''' If current lba is not in this pid lab dictionary, we should look for
-                whether this event associated with lab belongs to other pid.
-                '''
-                ret = adjust_pid_by_lba_op(pid, lba, op)  # try to find out a right PID
-                if ret is None:
-                    # cannot find a pid associated with this request, currently
-                    # we just don't add this event into data bank. FIXME
-                    print("We cannot find a pid associated with this line %d event %s" %
-                          (line_no, property_dict[gvar.gmenu_events]))  # melib.me_dbg
-                    return
-                else:
-                    blk_dic[gvar.gmenu_PID] = ret
-    add_leaf(blk_dic)
-
-
-def add_scsi_leaf(property_dict):
-    line_no = gvar.gCurr_line
-    scsi_dic = property_dict.copy()
-    pid = scsi_dic[gvar.gmenu_PID]
-
-    if gvar.gmenu_op in scsi_dic.keys() and scsi_dic[gvar.gmenu_op] is not None:
-        op = scsi_dic[gvar.gmenu_op]
-    else:
-        op = None
-    if gvar.gmenu_lba in scsi_dic.keys() and scsi_dic[gvar.gmenu_lba] is not None:
-        lba = scsi_dic[gvar.gmenu_lba]
-    else:
-        lba = None
-    if lba is not None:
-        if ((pid, op) in sgLBA_list_of_PID_OP.keys() and lba not in sgLBA_list_of_PID_OP[(pid, op)]) or\
-                ((pid, op) not in sgLBA_list_of_PID_OP.keys()):
-            ''' If current lba is not in this dictionary, we should check if
-             this event belongs to other pid.
-            '''
-            ret = adjust_pid_by_lba_op(pid, lba, op)
-            if ret is None:
-                # cannot find a pid associated with this request, currently
-                # we just don't add this event into data bank. FIXME
-                print("We cannot find a pid associated with this line %d event %s" %
-                             (line_no, property_dict[gvar.gmenu_events]))  # melib.me_dbg
-                return
-            else:
-                scsi_dic[gvar.gmenu_PID] = ret
-
-    add_leaf(scsi_dic)
-
-
-def add_others_leaf(property_dict):
-
-    temp_dic = property_dict.copy()
-    pid = temp_dic[gvar.gmenu_PID]
-
-    if temp_dic[gvar.gmenu_op] is None:
-        # This event hasn't assigned the direction of request.
-        melib.me_dbg("No operation type assigned!")
-        temp_dic[gvar.gmenu_op] = sgCurrent_info[pid][gvar.gmenu_op]
-    #    else:
-    #        op = temp_dic[gvar.gmenu_op]
-
-    add_leaf(temp_dic)
-
-
-def add_one_new_leaf(property_dict):
-
-    func = property_dict.get(gvar.gmenu_func)
-
-    if func is None:
-        ''' If there is no function name, we explicitly reject adding.'''
-        return
-
-    if func in gvar.gE2E_events_funcs_filter_dict['block']:
-        add_block_leaf(property_dict)
-        return
-    elif func in gvar.gE2E_events_funcs_filter_dict['scsi']:
-        add_scsi_leaf(property_dict)
-        return
-    else:
-        for key in gvar.gE2E_events_funcs_filter_dict.keys():
-            if key != 'block' and key != 'scsi':
-                if func in gvar.gE2E_events_funcs_filter_dict[key]:
-                    add_others_leaf(property_dict)
-                    return
-
-
-def add_new_req_into_tree(property_dict):
+def add_new_event_into_tree(property_dict, match_dict):
     pid = property_dict[gvar.gmenu_PID]
-    orig_pid = property_dict[gvar.gmenu_OriginalPid]
-    len_bytes = property_dict[gvar.gmenu_len]
+    chunk = property_dict[gvar.gmenu_len]
     op = property_dict[gvar.gmenu_op]
-    event = property_dict[gvar.gmenu_events]
-    timestamp = property_dict[gvar.gmenu_time]
 
-    sgRequest_counter_per_pid_op[pid][op][len_bytes] += 1
-    #seq = sgRequest_counter_per_pid_op[pid][op][len_bytes]
-    req_seq = sgRequest_counter_per_pid_op[pid][op][len_bytes]
-    #bak_event = event
-    #event = '1-'+event  # this is the first event of request.
-    '''
-    sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq][1][bak_event][gvar.gmenu_time] = timestamp
-    sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq][1][bak_event][gvar.gmenu_len] = len_bytes
-    sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq][1][bak_event][gvar.gmenu_lba] = None
-    '''
-    add_to_db(pid, orig_pid, op, len_bytes, req_seq, 1, event, timestamp, None, len_bytes)
-    #update_current_pid_info_dict(pid, len_bytes, op, req_seq, 1, event, '0')
+    for i in match_dict.keys():
+        e2e_name = conf.gE2E_durations_trace[i]
+        if e2e_name not in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
+            add_new_branch_into_tree(property_dict, match_dict)
+        elif chunk not in sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name].keys():
+            add_new_branch_into_tree(property_dict, match_dict)
+        else:
+            seq = match_dict[i]
+            if seq == 0:
+                sgItems_counter_per_E2E[pid][op][e2e_name][chunk] += 1
+                item_seq = sgItems_counter_per_E2E[pid][op][e2e_name][chunk]
+                add_subtrahend_to_db(property_dict, e2e_name, item_seq)
+            elif seq == 1:
+                lba = property_dict[gvar.gmenu_lba]
+                item_seq = sgIndex_of_LBA_in_DB.get((pid, op, e2e_name, chunk, lba))
+                if item_seq is not None:
+                    add_minuend_to_db(property_dict, e2e_name, item_seq)
+                else:
+                    melib.me_error("Line %d cannot find its relavent subtrahend item" % gvar.gCurr_line)
 
 
-def add_to_pid_req_property_tree(property_dict):
+def figure_out_e2e_match_dict(event_name):
+    match_dic = {}
+    for e2e in conf.gE2E_durations_trace:
+        if event_name == e2e.split('-')[0]:
+            match_dic[conf.gE2E_durations_trace.index(e2e)] = 0
+        elif event_name == e2e.split('-')[1]:
+            match_dic[conf.gE2E_durations_trace.index(e2e)] = 1
+    return match_dic
+
+
+def add_to_event_property_tree(property_dict):
 
     """
     Fill in the data bank according to property_dict, in which contains
@@ -503,145 +337,51 @@ def add_to_pid_req_property_tree(property_dict):
         op = property_dict[gvar.gmenu_op]
     else:
         op = None
+    # ---------------- change start --------------
+    lba = property_dict.get(gvar.gmenu_lba)  # try to get its LBA
+    if lba is not None:
+        if event == 'block_bio_remap':
+            sgLBA_list_of_PID_OP_chunk.setdefault((pid, op, len_bytes), []).append(lba)
+            melib.me_dbg("Event: %s, sgLBA_list_of_PID_OP_chunk: %s !" %
+                         (event, sgLBA_list_of_PID_OP_chunk))
 
-    if event is gvar.gReqEvent_start:
-        # This is a new request.
-        if pid not in sgPID_list and \
-                        pid not in sgPID_Req_Property_DataBank.keys():
-            ''' This PID first time appears, create a new pid branch. '''
-            add_one_new_pid_branch(property_dict)
-        elif pid in sgPID_list and \
-                pid in sgPID_Req_Property_DataBank.keys():
-            ''' This PID has been existing in the data bank. '''
-            if op in sgPID_Req_Property_DataBank[pid].keys() and \
-                    len_bytes not in sgPID_Req_Property_DataBank[pid][op].keys():
-                add_one_new_pid_branch(property_dict)
-            elif op not in sgPID_Req_Property_DataBank[pid].keys():
-                add_one_new_pid_branch(property_dict)
-            else:
-                add_new_req_into_tree(property_dict)
         else:
-            melib.me_warning(
-                "sgPID_list and sgPID_Req_Property_DataBank.keys not consistent.")
-            melib.me_warning(sgPID_list)
-            melib.me_warning(sgPID_Req_Property_DataBank.keys())
-    elif event is not gvar.gReqEvent_start:
-        ''' This is not the first event of request. '''
-        if pid in sgPID_Req_Property_DataBank.keys():
-            add_one_new_leaf(property_dict)
-        else:
-            ''' If the PID doesn't exist in the data bank, then check if its LBA could
-            be associated with one request in the data bank.'''
-            lba = property_dict.get(gvar.gmenu_lba)
-            if lba is not None and \
-                    pid is not None \
-                    and op is not None:
-                ''' Specified PID doesn't exist in the data bank,
-                but LBA, PID and OP are all not None, try to find
-                out its real PID. '''
+            if (not sgLBA_list_of_PID_OP_chunk.get((pid, op, len_bytes))) or\
+                    (lba not in sgLBA_list_of_PID_OP_chunk[(pid, op, len_bytes)]):
                 adjust_pid = adjust_pid_by_lba_op(pid, lba, op)
                 if adjust_pid is not None:
                     property_dict[gvar.gmenu_PID] = adjust_pid
-                    add_one_new_leaf(property_dict)
+                    pid = adjust_pid
+            '''
+            elif lba not in sgLBA_list_of_PID_OP_chunk[(pid, op, len_bytes)]:
+                adjust_pid = adjust_pid_by_lba_op(pid, lba, op)
+                if adjust_pid is not None:
+                    print("line %d: pid %s change to %s" % (gvar.gCurr_line, pid, adjust_pid))
+                    property_dict[gvar.gmenu_PID] = adjust_pid
+                    pid = adjust_pid
+            '''
 
-
-def e2e_file_parser(lines):
-    """
-    This function is to parse the input lines, and
-    build up sgPID_Req_Property_DataBank.
-    :param
-        lines: the log input
-    :return: if success, True; otherwise, False.
-    """
-    # find start line:
-    global line_no
-    fields = ["None"]
-    tmp_req_parser_property_dict = {}
-    line_no = 0
-
-    for line in lines:
-        line_no += 1
-
-        if melib.is_skip_this_line(line):
-            continue
-
-        # scan comment lines
-        if line.startswith("#"):
-            if gvar.analyzer_header_of_file(line):
-                fields = gvar.gFtrace_log_fields  # ["TASK-PID", "CPU", "TIMESTAMP", "FUNCTION"]
-                melib.me_dbg("L%d %s" % (line_no, line))
-            continue  # go to next line
-
-        melib.me_dbg("%d: %s" % (line_no, line[:-1]))
-        line = re.sub(r'\s+', ' ', line)  # remove more whitespace, just keep one
-
-        """
-        For some special event log, the function-pid field is separated by space, 
-        such as: "POSIX timer 0-2291". for this case, need to rebase its each part
-        position.
-        """
-        gap = 0
-        parts0 = line.split()
-        if not melib.is_cpu_field_string(parts0[fields.index('CPU#')]):
-            cpu_index = melib.where_is_cpu_field(parts0)
-            if cpu_index is not None:
-                if cpu_index > fields.index('CPU#'):
-                    gap = cpu_index - fields.index('CPU#')
-                else:
-                    melib.me_error("CPU# field index is not consistent with Line %d" %
-                                   line_no)
+    match_dict = figure_out_e2e_match_dict(event)
+    ''' match_dict: {e2e index in the gE2E_durations_trace: 0/1}
+    0--the first event, 1--the second event.'''
+    if match_dict:
+        #print("lba %s op  %s, len %d." % (lba, op, len_bytes))
+        '''
+        if (lba is not None) and
+                (lba not in sgLBA_list_of_PID_OP_chunk[(pid, op, len_bytes)]):
+            adjust_pid = adjust_pid_by_lba_op(pid, lba, op)
+            if adjust_pid is not None:
+                property_dict[gvar.gmenu_PID] = adjust_pid
+        '''
+        if pid not in sgEvent_Property_DataBank_groupbyevent.keys():
+            ''' This PID first time appears, create a new pid branch. '''
+            add_new_branch_into_tree(property_dict, match_dict)
+        elif pid in sgEvent_Property_DataBank_groupbyevent.keys():
+            ''' This PID has been existing in the data bank. '''
+            if op not in sgEvent_Property_DataBank_groupbyevent[pid].keys():
+                add_new_branch_into_tree(property_dict, match_dict)
             else:
-                melib.me_error("CPU# field doesn't exist in Line %d" %
-                               line_no)
-                continue
-
-        parts = line.strip().split(' ', fields.index("FUNCTION")+gap)  # split by space
-
-        task_pid = parts[fields.index("TASK-PID")+gap]
-        cur_pid = task_pid.rsplit(b'-')[-1]  # get PID
-        tmp_req_parser_property_dict[gvar.gmenu_task] = task_pid.rsplit(b'-')[0]
-        tmp_req_parser_property_dict[gvar.gmenu_PID] = task_pid  # cur_pid
-        tmp_req_parser_property_dict[gvar.gmenu_OriginalPid] = task_pid
-
-        timestamp = parts[fields.index("TIMESTAMP")+gap].split(b':')[0]  # get time stamp of this line
-        tmp_req_parser_property_dict[gvar.gmenu_time] = timestamp
-        functions = parts[fields.index('FUNCTION')+gap]
-        melib.me_dbg("Line=%d--> PID: %s, timestamp: %s, functions: '%s'" % \
-                     (line_no, cur_pid, timestamp, functions))
-
-        if functions.startswith("sys"):
-            # VFS
-            function_dict = vfs.vfs_functions2dict_parser(functions)
-        elif functions.startswith("ext4"):
-            # Ext4 layer
-            function_dict = ext4.ext4_functions2dict_parser(functions)
-        elif functions.startswith("block") or functions.startswith("blk"):
-            # Block layer
-            function_dict = block.blk_functions2dict_parser(functions)
-        elif functions.startswith("scsi") or functions.startswith("ufs"):
-            # SCSI
-            function_dict = scsi.scsi_functions2dict_parser(functions)
-        else:
-            continue
-
-        ''' add this event '''
-        if function_dict is None:
-            ''' Goto next line, since this event/function
-            is not in the checked list.'''
-            continue
-        else:
-            # merge two dictionaries into one
-            tmp_req_parser_property_dict.update(function_dict)
-            try:
-                add_to_pid_req_property_tree(tmp_req_parser_property_dict)
-                tmp_req_parser_property_dict.clear()
-                function_dict.clear()
-            except melib.DefinedExcepton as e:
-                melib.me_warning("Add item error!")
-                melib.me_warning(tmp_req_parser_property_dict)
-                melib.me_warning(e)
-        continue
-    return True
+                add_new_event_into_tree(property_dict, match_dict)
 
 
 def add_one_duration(pid, op, len_bytes, req_seq, pre_event_dict, curr_event_dict, E2E_seq):
@@ -652,19 +392,19 @@ def add_one_duration(pid, op, len_bytes, req_seq, pre_event_dict, curr_event_dic
 
         dur = round(float(curr_time) - float(pre_time), 6)
         e2e = pre_event + '-' + curr_event
-        sgPID_Req_E2E_E2E_Duration_DataBank[pid][op][len_bytes][req_seq][E2E_seq][e2e] = dur
+        sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][E2E_seq][e2e] = dur
 
 
 def e2e_interval_calculator(pid, op, len_bytes, req_seq):
     pre_event = {}
     curr_event = {}
     duration_seq = 0
-    one_req_dict = sgPID_Req_Property_DataBank[pid][op][len_bytes][req_seq]
+    one_req_dict = sgEvent_Property_DataBank_groupbyevent[pid][op][len_bytes][req_seq]
     req_seq_list = sorted(one_req_dict.keys())
 
     for i in req_seq_list:
         event = list(one_req_dict[i])[0]
-        if event in gvar.gE2E_calculator_list:
+        if event in conf.gE2E_trace_points_in_one_request:
             duration_seq += 1
             if pre_event == {}:
                 pre_event = one_req_dict[1]
@@ -683,19 +423,20 @@ def e2e_interval_calculator(pid, op, len_bytes, req_seq):
     return
 
 
-def e2e_file_distribution_parser():
+def e2e_duration_calculator():
     """
-    According to sgPID_Req_Property_DataBank, analyze and
+    According to sgEvent_Property_DataBank_groupbyevent, analyze and
     calculate the e2e duration. finally fill in
-    sgPID_Req_E2E_E2E_Duration_DataBank.
+    sgE2E_Duration_DataBank.
     :return:
     """
-    for pid in sgPID_Req_Property_DataBank.keys():
-        for op in sgPID_Req_Property_DataBank[pid].keys():
-            for len_bytes in sgPID_Req_Property_DataBank[pid][op].keys():
-                seqs = sorted(sgPID_Req_Property_DataBank[pid][op][len_bytes].keys())
-                for i in seqs:
-                    e2e_interval_calculator(pid, op, len_bytes, i)
+    for pid in sgEvent_Property_DataBank_groupbyevent.keys():
+        for op in sgEvent_Property_DataBank_groupbyevent[pid].keys():
+            for e2e_name in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
+                for chunk in sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name].keys():
+                    seqs = sorted(sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk].keys())
+                    for i in seqs:
+                        e2e_interval_calculator(pid, op, len_bytes, i)
     return
 
 
@@ -703,22 +444,22 @@ def e2e_databank_resolver(option):
     curr_total = 0
     software_cost = 0
     curr_hw_cost = 0
-    for pid in sgPID_Req_E2E_E2E_Duration_DataBank.keys():
-        for op in sgPID_Req_E2E_E2E_Duration_DataBank[pid].keys():
-            for len_bytes in sgPID_Req_E2E_E2E_Duration_DataBank[pid][op].keys():
+    for pid in sgE2E_Duration_DataBank.keys():
+        for op in sgE2E_Duration_DataBank[pid].keys():
+            for len_bytes in sgE2E_Duration_DataBank[pid][op].keys():
 
-                for req_seq in sgPID_Req_E2E_E2E_Duration_DataBank[pid][op][len_bytes].keys():
+                for req_seq in sgE2E_Duration_DataBank[pid][op][len_bytes].keys():
                     curr_total = curr_hw_cost = 0
-                    for e2e_seq in sgPID_Req_E2E_E2E_Duration_DataBank[pid][op][len_bytes][req_seq].keys():
+                    for e2e_seq in sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq].keys():
 
                         e2e_event =\
-                            list(sgPID_Req_E2E_E2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq])[0]
+                            list(sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq])[0]
                         e2e_duration =\
-                            sgPID_Req_E2E_E2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq][e2e_event]
+                            sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq][e2e_event]
 
                         if e2e_event == 'Enter_VFS-Exit_VFS':
                             curr_total = e2e_duration
-                        if e2e_event in gvar.gE2E_HW_transfer_e2e_flags:
+                        if e2e_event in conf.gE2E_HW_transfer_duration_define:
                             curr_hw_cost = e2e_duration
 
                         if curr_total and curr_hw_cost:
@@ -1241,66 +982,54 @@ def software_hardware_duration_division():
     pdf.close()
 
 
-def e2e_main():
+def e2e_event_main():
 
-    """ Step 1 """
-    #print("Step 1: parsing input log file ......")
-    #e2e_file_parser(original_file_lines)  # parse log file and build sgPID_Req_Property_DataBank.
+    if sgEvent_Property_DataBank_groupbyevent:
+        melib.me_pprint_dict_file(gvar.gOutput_Dir_Default + "00-sgEvent_Property_DataBank_groupbyevent.log",
+                                  sgEvent_Property_DataBank_groupbyevent)
 
-    if sgPID_Req_Property_DataBank and sgPID_list:
-        #melib.me_pprint_dict_scream(sgPID_Req_Property_DataBank)
-        melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"00-sgPID_Req_Property_DataBank.log",
-                                  sgPID_Req_Property_DataBank)
-        #melib.me_pickle_save_obj("./00-pickle-sgPID_Req_Property_DataBank.log", sgPID_Req_Property_DataBank)
+        """  Step 1 """
+        print("Step 1: Calculating E2E duration raw data bank ......")
+        e2e_duration_calculator()  # fill in sgE2E_Duration_DataBank.
         '''
-        property_databank_jsobj = json.dumps(sgPID_Req_Property_DataBank)
-        js_file_obj = open('sgPID_Req_Property_DataBank.json', 'w')
-        js_file_obj.write(property_databank_jsobj)
-        js_file_obj.close()
-        '''
+        if sgE2E_Duration_DataBank:
+            #melib.me_pprint_dict_scream(sgE2E_Duration_DataBank)
+            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"01-sgE2E_Duration_DataBank.log",
+                                      sgE2E_Duration_DataBank)
+            #melib.me_pickle_save_obj("./01-pickle-sgE2E_Duration_DataBank.log",
+            #                         sgE2E_Duration_DataBank)
 
-        """  Step 2 """
-        print("Step 2: parsing distribution raw databank ......")
-        e2e_file_distribution_parser()  # fill in sgPID_Req_E2E_E2E_Duration_DataBank.
-
-        if sgPID_Req_E2E_E2E_Duration_DataBank:
-            #melib.me_pprint_dict_scream(sgPID_Req_E2E_E2E_Duration_DataBank)
-            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"01-sgPID_Req_E2E_E2E_Duration_DataBank.log",
-                                      sgPID_Req_E2E_E2E_Duration_DataBank)
-            #melib.me_pickle_save_obj("./01-pickle-sgPID_Req_E2E_E2E_Duration_DataBank.log",
-            #                         sgPID_Req_E2E_E2E_Duration_DataBank)
-
-            """ Step 3 """
-            print("Step 3: databank resolving ......")
+            """ Step 2 """
+            print("Step 2: databank resolving ......")
             e2e_databank_resolver('default')  # to resolve the databank and fill in several key dictionaries.
 
             if sgE2E_e2e_distribution_by_pid_dic:  # analyze and generate the result file by pid
                 #melib.me_pprint_dict_scream(sgE2E_e2e_distribution_by_pid_dic)
                 melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-sgE2E_e2e_distribution_by_pid_dic.log",
                                           sgE2E_e2e_distribution_by_pid_dic)
-                """ Step 4 """
-                print("Step 4-1: analyzing I/O status by pid ......")
+                """ Step 3 """
+                print("Step 3-1: analyzing I/O status by pid ......")
                 e2e_stat_analyzer_by_pid()
-                print("Step 4-2: outputting scattergram pdf by pid ......")
+                print("Step 3-2: outputting scattergram pdf by pid ......")
                 e2e_scattergram_pdf_show_by_pid()
-                print("Step 4-3: outputting histogram pdf by pid ......")
+                print("Step 3-3: outputting histogram pdf by pid ......")
                 e2e_histogram_pdf_show_by_pid()
 
             if sgE2E_e2e_distribution_by_chunk_dic:  # analyze and generate the result file by op+len
                 melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-sgE2E_e2e_distribution_by_chunk_dic.log",
                                           sgE2E_e2e_distribution_by_chunk_dic)
-                """ Step 5 """
-                print("Step 5-1: analyzing I/O status by op_len ......")
+                """ Step 4 """
+                print("Step 4-1: analyzing I/O status by op_len ......")
                 e2e_stat_analyzer_by_op_len()
-                print("Step 5-2: outputting scattergram pdf by op_len ......")
+                print("Step 4-2: outputting scattergram pdf by op_len ......")
                 e2e_scattergram_pdf_show_by_op_len()
-                print("Step 5-3: outputting histogram pdf by op_len ......")
+                print("Step 4-3: outputting histogram pdf by op_len ......")
                 e2e_histogram_pdf_show_by_op_len()
-        """ Step 6 """
-        print("Step 6: SW and HW duration division ....")
+        """ Step 5 """
+        print("Step 5: SW and HW duration division ....")
         software_hardware_duration_division()
-
+        '''
     else:
-        melib.me_warning("sgPID_Req_Property_DataBank is Null!")
+        melib.me_warning("sgEvent_Property_DataBank_groupbyevent is empty.")
         raise melib.DefinedExcepton("Parsing failure")
     return 1

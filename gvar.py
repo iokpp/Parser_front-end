@@ -57,10 +57,9 @@ gMean = 'MEAN'
 gAmount = 'AMOUNT'
 gTotal = 'TOTAL'
 
-''' events defined for the e2e'''
+''' Defined the string flags '''
 gReqEvent_start = 'Enter_VFS'
 gReqEvent_end = 'Exit_VFS'
-
 gWrite_Req = "write"
 gRead_Req = "read"
 
@@ -71,137 +70,9 @@ gFtrace_log_fields = [] #"TASK-PID", "||||", "CPU", "TIMESTAMP", "FUNCTION"
 gBlk_Events_Write_OP_list = ['WS', 'W', 'FWFS', 'WFS']
 gBlk_Events_Read_OP_list = ['RS', 'R', 'R', 'RM', 'RA', 'RSM']
 
-gEvents_dict =\
-    {'vfs': ['sys_write',
-             'sys_read'
-             ],
-     'ext4': ['ext4_direct_IO_enter',
-              'ext4_direct_IO_exit',
-              'ext4_sync_file_enter',
-              'ext4_sync_file_exit',
-              'ext4_da_write_begin',
-              'ext4_da_write_end',
-              'ext4_writepages',
-              'ext4_writepages_result',
-              'ext4_es_lookup_extent_enter',
-              'ext4_es_lookup_extent_exit'
-              ],
-     'block': ['block_bio_remap',
-               'block_bio_queue',
-               'block_getrq',
-               'block_plug',
-               'block_unplug',
-               'block_rq_insert',
-               'block_rq_issue',
-               'block_rq_complete'
-               ],
-     'scsi': ['scsi_dispatch_cmd_start',
-              'scsi_dispatch_cmd_done'
-              ],
-     'dev': ['none'],
-     'irq': ['irq_handler_entry',
-             'irq_handler_exit'
-             ]
-     }
-
-gFuns_dict =\
-    {'vfs': ['none'
-             ],
-     'ext4': ['ext4_file_write_iter',
-              '__generic_file_write_iter',
-              'generic_perform_write',
-              'generic_file_read_iter'
-              ],
-     'block': ['none'
-               ],
-     'scsi': ['scsi_queue_rq',
-              'scsi_dma_map',
-              'scsi_dma_unmap'
-              ],
-     'dev': ['ufshcd_intr'],
-     'irq': ['none']
-     }
-
-gE2E_events_funcs_filter_dict = {
-        'vfs': [
-                'sys_write(fd:',
-                'sys_write',
-                'sys_read(fd:',
-                'sys_read'
-               ],
-        'ext4': [
-                 'ext4_file_write_iter',
-                 'ext4_sync_file_enter',
-                 'ext4_writepages',
-                 'ext4_da_write_pages',
-                 'ext4_sync_file_exit',
-                 'ext4_writepages_result',
-                 'generic_file_read_iter',
-                 'ext4_direct_IO_enter',
-                 'ext4_direct_IO_exit'
-                ],
-        'block': [
-                 'block_bio_remap',
-                 'block_bio_queue',
-                 'block_getrq',
-                 'block_plug',
-                 'block_unplug',
-                 'block_rq_insert',
-                 'block_rq_issue',
-                 'block_rq_complete',
-                 ],
-        'scsi': [
-                 'scsi_dispatch_cmd_start',
-                 'scsi_dispatch_cmd_done',
-                ],
-        'others': [
-
-            ],
-}
-'''
-gE2E_calculator_list = [
-                'Exit_VFS',
-                 # --------Ext4-----------
-                 'ext4_file_write_iter',
-                 'ext4_sync_file_enter',
-                 'ext4_sync_file_exit',
-                 'ext4_direct_IO_enter',
-                 'generic_file_read_iter',
-                 'ext4_direct_IO_enter',
-                 'ext4_direct_IO_exit'
-                 # --------Block--------------
-                 'block_bio_remap',
-                 'block_bio_queue',
-                 'block_getrq',
-                 'block_plug',
-                 'block_unplug',
-                 'block_rq_insert',
-                 'block_rq_issue',
-                 'block_rq_complete',
-                 # ---------SCSI------------
-                 'scsi_dispatch_cmd_start',
-                 'scsi_dispatch_cmd_done'
-]
-'''
-gE2E_calculator_list = [
-                'Exit_VFS',
-                 #----------block-----------
-                 'block_rq_issue',
-                 # ---------SCSI------------
-                 'scsi_dispatch_cmd_start',
-                 'scsi_dispatch_cmd_done',
-                 'block_rq_complete',
-
-]
-
-gE2E_HW_transfer_e2e_flags = [
-                'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done'
-
-]
-
-gWA_HW_transfer_completion_flags = [
-                'scsi_dispatch_cmd_done'
-]
+gE2E_mode_group_by_event = 'event'
+gE2E_mode_group_by_request = 'request'
+gE2E_mode = gE2E_mode_group_by_event  # default mode
 
 
 def analyzer_header_of_file(line):
@@ -236,3 +107,12 @@ def analyzer_header_of_file(line):
             gFtrace_log_fields = fields
             return 1  # go to next line
     return 0
+
+
+def create_default_property_dict():
+    ret_dict = {}
+    ret_dict[gmenu_PID] = None
+    ret_dict[gmenu_lba] = None
+    ret_dict[gmenu_op] = None
+    ret_dict[gmenu_len] = None
+    return ret_dict

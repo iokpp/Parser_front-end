@@ -16,6 +16,7 @@ import os
 
 import re
 import gvar
+import conf
 from lib import melib
 
 
@@ -23,7 +24,8 @@ def vfs_functions2dict_parser(funcs):
     ret_dict = {}
     funcs_list = re.split(r"[:()\s]+", funcs)
 
-    if funcs_list[0] in gvar.gE2E_events_funcs_filter_dict['vfs']:
+
+    if funcs_list[0] in conf.gE2E_events_funcs_filter_dict['vfs']:
         ret_dict[gvar.gmenu_func] = funcs_list[0]
 
         if ret_dict[gvar.gmenu_func] == 'sys_read':

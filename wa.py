@@ -16,6 +16,7 @@ import os
 import re
 from lib import melib
 import gvar
+import conf
 
 #{'task name': {4096, ...}, ...}
 sgWA_VFS_write = dict()
@@ -61,7 +62,7 @@ def add_to_wa_property_tree(funcs):
             if funcs[gvar.gmenu_op] == gvar.gWrite_Req:
                 add_remap_write_dict(funcs[gvar.gmenu_task], funcs[gvar.gmenu_len])
 
-        if funcs[gvar.gmenu_func] in gvar.gWA_HW_transfer_completion_flags:
+        if funcs[gvar.gmenu_func] in conf.gWA_HW_transfer_completion_flags:
             if funcs[gvar.gmenu_op] == gvar.gWrite_Req:
                 add_to_HW_write_dict(funcs[gvar.gmenu_func], funcs[gvar.gmenu_len])
 

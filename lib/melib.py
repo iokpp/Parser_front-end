@@ -200,8 +200,13 @@ def usage():
                     trace-cmd easily to get this log. 
         --split     Split original trace log into several file by PID
                       eg: ftparser -f ftrace.log --split
-        --e2e       Print out IO performance key parameters based on the
+        --e2e <group mode>      
+                    Print out IO performance key parameters based on the
                     input file from ftrace.
+                    There are two kinds of group mode, event and request.
+                    If specifying 'request', that will group each request.
+                    If specifying 'event', that will just group each e2e.
+                    
         --wa        Analyze the system level WA (write amplification)                        
         --protocol [<scsi|nvme>]
                         protocol analyzer.

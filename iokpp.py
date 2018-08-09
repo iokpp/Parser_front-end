@@ -12,7 +12,8 @@
 
 import re
 import gvar
-import e2e
+import e2e_req
+import e2e_event
 import wa
 from lib import melib
 from fs import ext4, vfs
@@ -36,6 +37,7 @@ def parsing_one_line(line):
     line_no = gvar.gCurr_line
 
     tmp_req_parser_property_dict = {}
+    tmp_req_parser_property_dict = gvar.create_default_property_dict()
 
     if melib.is_skip_this_line(line):
         return False
@@ -129,12 +131,20 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa):
         if func_dict:
             ''' Parsing success'''
             if is_e2e:
-                try:
-                    e2e.add_to_pid_req_property_tree(func_dict)
-                except melib.DefinedExcepton as e:
-                    melib.me_warning("Add item error!")
-                    melib.me_warning(func_dict)
-                    melib.me_warning(e)
+                if gvar.gE2E_mode == gvar.gE2E_mode_group_by_request:
+                    try:
+                        e2e_req.add_to_event_property_tree(func_dict)
+                    except melib.DefinedExcepton as e:
+                        melib.me_warning("Add item error!")
+                        melib.me_warning(func_dict)
+                        melib.me_warning(e)
+                elif gvar.gE2E_mode == gvar.gE2E_mode_group_by_event:
+                    try:
+                        e2e_event.add_to_event_property_tree(func_dict)
+                    except melib.DefinedExcepton as e:
+                        melib.me_warning("Add item error!")
+                        melib.me_warning(func_dict)
+                        melib.me_warning(e)
 
             if is_wa:
                 try:
@@ -150,6 +160,12 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa):
 def iokpp_main(original_file_lines, is_e2e, is_wa):
     line_by_line_parser(original_file_lines, is_e2e, is_wa)
     if is_e2e:
-        e2e.e2e_main()
+        if gvar.gE2E_mode == gvar.gE2E_mode_group_by_request:
+            e2e_req.e2e_main()
+        elif gvar.gE2E_mode == gvar.gE2E_mode_group_by_event:
+            e2e_event.e2e_event_main()
+        else:
+            melib.me_error("Unkonw e2e_mode.")
+            exit(1)
     if is_wa:
         wa.wa_main()

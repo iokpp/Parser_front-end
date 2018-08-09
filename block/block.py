@@ -15,7 +15,8 @@
 import sys
 import os
 import re
-from gvar import *
+import gvar
+import conf
 from lib import melib
 
 
@@ -40,12 +41,12 @@ def parser_block_trace_line(line):
     para_dict['timestamp'] = temp[3][:-1]
     para_dict['function'] = temp[4][:-1]
     if para_dict['function'] != 'block_plug' and para_dict['function'] != 'block_unplug':
-        if temp[6] in gBlk_Events_Write_OP_list:
-            para_dict[gmenu_op] = gWrite_Req
-        elif temp[6] in gBlk_Events_Read_OP_list:
-            para_dict[gmenu_op] = gRead_Req
+        if temp[6] in gvar.gBlk_Events_Write_OP_list:
+            para_dict[gvar.gmenu_op] = gvar.gWrite_Req
+        elif temp[6] in gvar.gBlk_Events_Read_OP_list:
+            para_dict[gvar.gmenu_op] = gvar.gRead_Req
         else:
-            para_dict[gmenu_op] = None
+            para_dict[gvar.gmenu_op] = None
 
         para_dict['address'] = temp[temp.index('+') - 1]
         para_dict['len'] = temp[temp.index('+') + 1]
@@ -59,28 +60,28 @@ def parser_block_trace_event_str(func):
     para_dict = {}
     temp = func.split()
 
-    para_dict[gmenu_func] = temp[0].split(':')[0]
-    tp_func = para_dict[gmenu_func]
-    para_dict[gmenu_events] = tp_func
+    para_dict[gvar.gmenu_func] = temp[0].split(':')[0]
+    tp_func = para_dict[gvar.gmenu_func]
+    para_dict[gvar.gmenu_events] = tp_func
 
-    para_dict[gmenu_lba] = None
-    para_dict[gmenu_sectors] = None
-    para_dict[gmenu_len] = None
+    para_dict[gvar.gmenu_lba] = None
+    para_dict[gvar.gmenu_sectors] = None
+    para_dict[gvar.gmenu_len] = None
 
     if tp_func != 'block_plug' and tp_func != 'block_unplug':
-        para_dict[gmenu_op] = temp[2]
+        para_dict[gvar.gmenu_op] = temp[2]
 
-        if para_dict[gmenu_op] in gBlk_Events_Write_OP_list:
-            para_dict[gmenu_op] = gWrite_Req
-        elif para_dict[gmenu_op] in gBlk_Events_Read_OP_list:
-            para_dict[gmenu_op] = gRead_Req
+        if para_dict[gvar.gmenu_op] in gvar.gBlk_Events_Write_OP_list:
+            para_dict[gvar.gmenu_op] = gvar.gWrite_Req
+        elif para_dict[gvar.gmenu_op] in gvar.gBlk_Events_Read_OP_list:
+            para_dict[gvar.gmenu_op] = gvar.gRead_Req
 
-        para_dict[gmenu_lba] = temp[temp.index('+') - 1]
-        para_dict[gmenu_sectors] = temp[temp.index('+') + 1]
-        para_dict[gmenu_len] = int(para_dict[gmenu_sectors]) * gLogicalSectorSize_Bytes
+        para_dict[gvar.gmenu_lba] = temp[temp.index('+') - 1]
+        para_dict[gvar.gmenu_sectors] = temp[temp.index('+') + 1]
+        para_dict[gvar.gmenu_len] = int(para_dict[gvar.gmenu_sectors]) * gvar.gLogicalSectorSize_Bytes
 
-    elif para_dict[gmenu_func] == 'block_unplug':
-        para_dict[gmenu_reqs_unplug] = temp[temp.index('block_unplug:') + 1 + 1]
+    elif para_dict[gvar.gmenu_func] == 'block_unplug':
+        para_dict[gvar.gmenu_reqs_unplug] = temp[temp.index('block_unplug:') + 1 + 1]
 
     return para_dict
 
@@ -89,11 +90,11 @@ def blk_functions2dict_parser(funcs):
     ret_dict = {}
     funcs_list = re.split(r"[:()\s]+", funcs)
 
-    if funcs_list[0] in gFuns_dict['block']:
+    if funcs_list[0] in conf.gFuns_dict['block']:
         # this is just a function trace log, currently, we have nothing.
         # ret_dict[gmenu_events] = ret_dict[gmenu_func]
         return None
-    elif funcs_list[0] in gEvents_dict['block']:
+    elif funcs_list[0] in conf.gEvents_dict['block']:
         # this is a block event, need to further parser.
         ret_dict = parser_block_trace_event_str(funcs)
         return ret_dict

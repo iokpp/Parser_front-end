@@ -17,7 +17,7 @@ import getopt
 from lib import melib
 import gvar
 import split
-import e2e
+import e2e_req
 import wa
 import iokpp
 
@@ -47,7 +47,7 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '-h-i:-v-d-k',
                                    ['split', 'keep', 'debug', 'help', 'version', 'input=',
-                                    'e2e', 'out=', 'pending', 'wa'])
+                                    'e2e=', 'out=', 'pending', 'wa'])
     except getopt.GetoptError:
             melib.usage()
             sys.exit(2)
@@ -71,6 +71,14 @@ def main():
             gKeep_Files = True
         if opt_name in ('--e2e', 'e2e'):
             is_e2e = True
+            e2e_mode = opt_value
+            if e2e_mode == gvar.gE2E_mode_group_by_event or \
+                    e2e_mode == gvar.gE2E_mode_group_by_request:
+                print("E2E mode is %s." % e2e_mode)
+                gvar.gE2E_mode = e2e_mode
+            else:
+                print("E2E will use default mode %s." % gvar.gE2E_mode)
+
         if opt_name in ('--out', 'out'):
             gvar.gOutput_Dir_Default = opt_value
         if opt_name in ('--pending', 'pending'):

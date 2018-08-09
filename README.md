@@ -3,11 +3,19 @@ Ftparser (ftrace parser) or IOKPP (I/O key performance parameter)
 Free use of this software is granted under the terms of the GNU Public License (GPL).
 
 This tool is used to analyze/parse the linux function trace (ftrace) log,
-and provide the I/O performance related parameters.
+and provide the I/O performance related parameters. the key parameters include:
+
+1. Time consumption from one event to another event
+2. System layer WA(write amplification)
+3. Time costs compare between Hardware data transfer and  software layers happened.
+4. SCSI protocol analyze
+5. Multiple I/O requests distribution on the storage device
+6. Time costs on certain trace range distribution
 
 At the initial version, this tool is purely developed by python and mainly based
 on the ftrace log.
 About ftrace (https://elinux.org/Ftrace).
+
 ============
 
 Dependencies
