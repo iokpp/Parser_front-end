@@ -207,7 +207,7 @@ def adjust_pid_by_lba_op(pid, lba, op):
     if match_num > 1:
         # FIXME
         melib.me_warning("Line %d " % line_no)
-        melib.me_warning("---match pids %s:%s using pid %d " % (match_num, match_pids, ret_pid))
+        melib.me_warning("---match %d times, %s using pid %s " % (match_num, match_pids, ret_pid))
 
     return ret_pid
 
@@ -230,15 +230,15 @@ def add_subtrahend_to_db(event_info_dict, e2e_name, item_seq):
     lba = event_info_dict[gvar.gmenu_lba]
     lines = gvar.gCurr_line
 
-    if sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq].get(0):
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq].get(0):
         melib.me_warning("Failed to add Line %d, since %s already exists in data bank. e2e %s, sub_event %s." %
                          (lines, event, e2e_name, item_seq))
 
     else:
-        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][0][gvar.gmenu_time] = timestamp
-        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][0][gvar.gmenu_lba] = lba
+        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq][0][gvar.gmenu_time] = timestamp
+        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq][0][gvar.gmenu_lba] = lba
 
-    sgIndex_of_LBA_in_DB[(pid, op, e2e_name, chunk, lba)] = item_seq
+    sgIndex_of_LBA_in_DB[(pid, op, chunk, e2e_name, lba)] = item_seq
 
 
 def add_minuend_to_db(event_info_dict, e2e_name, item_seq):
@@ -250,13 +250,13 @@ def add_minuend_to_db(event_info_dict, e2e_name, item_seq):
     lba = event_info_dict[gvar.gmenu_lba]
     lines = gvar.gCurr_line
 
-    if sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq].get(1):
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq].get(1):
         melib.me_warning("Failed to add Line %d, since %s already exists in data bank. e2e %s, sub_event %s." %
                          (lines, event, e2e_name, item_seq))
 
     else:
-        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][1][gvar.gmenu_time] = timestamp
-        sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][item_seq][1][gvar.gmenu_lba] = lba
+        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq][1][gvar.gmenu_time] = timestamp
+        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq][1][gvar.gmenu_lba] = lba
 
 
 def add_new_branch_into_tree(event_info_dict, e2e_match_dict):
@@ -270,7 +270,7 @@ def add_new_branch_into_tree(event_info_dict, e2e_match_dict):
     for i in e2e_match_dict.keys():
         # This is the first req associated with PID/op/e2e/chunk
         e2e_name = conf.gE2E_durations_trace[i]  # get the e2e name by its index
-        item_seq = sgItems_counter_per_E2E[pid][op][e2e_name][chunk] = 1 # this is the first item of e2e recode.
+        item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]= 1 # this is the first item of e2e recode.
         seq = e2e_match_dict[i]  # get its event index, 0/1
         if seq == 0:
             # here only adds first event, because so far it doesn't exist other event in this pid recode.
@@ -286,19 +286,19 @@ def add_new_event_into_tree(property_dict, match_dict):
 
     for i in match_dict.keys():
         e2e_name = conf.gE2E_durations_trace[i]
-        if e2e_name not in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
+        if chunk not in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
             add_new_branch_into_tree(property_dict, match_dict)
-        elif chunk not in sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name].keys():
+        elif e2e_name not in sgEvent_Property_DataBank_groupbyevent[pid][op][chunk].keys():
             add_new_branch_into_tree(property_dict, match_dict)
         else:
             seq = match_dict[i]
             if seq == 0:
-                sgItems_counter_per_E2E[pid][op][e2e_name][chunk] += 1
-                item_seq = sgItems_counter_per_E2E[pid][op][e2e_name][chunk]
+                sgItems_counter_per_E2E[pid][op][chunk][e2e_name] += 1
+                item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]
                 add_subtrahend_to_db(property_dict, e2e_name, item_seq)
             elif seq == 1:
                 lba = property_dict[gvar.gmenu_lba]
-                item_seq = sgIndex_of_LBA_in_DB.get((pid, op, e2e_name, chunk, lba))
+                item_seq = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, lba))
                 if item_seq is not None:
                     add_minuend_to_db(property_dict, e2e_name, item_seq)
                 else:
@@ -352,14 +352,6 @@ def add_to_event_property_tree(property_dict):
                 if adjust_pid is not None:
                     property_dict[gvar.gmenu_PID] = adjust_pid
                     pid = adjust_pid
-            '''
-            elif lba not in sgLBA_list_of_PID_OP_chunk[(pid, op, len_bytes)]:
-                adjust_pid = adjust_pid_by_lba_op(pid, lba, op)
-                if adjust_pid is not None:
-                    print("line %d: pid %s change to %s" % (gvar.gCurr_line, pid, adjust_pid))
-                    property_dict[gvar.gmenu_PID] = adjust_pid
-                    pid = adjust_pid
-            '''
 
     match_dict = figure_out_e2e_match_dict(event)
     ''' match_dict: {e2e index in the gE2E_durations_trace: 0/1}
@@ -384,42 +376,28 @@ def add_to_event_property_tree(property_dict):
                 add_new_event_into_tree(property_dict, match_dict)
 
 
-def add_one_duration(pid, op, len_bytes, req_seq, pre_event_dict, curr_event_dict, E2E_seq):
-        pre_event = list(pre_event_dict)[0]
-        curr_event = list(curr_event_dict)[0]
-        pre_time = pre_event_dict[pre_event][gvar.gmenu_time]
-        curr_time = curr_event_dict[curr_event][gvar.gmenu_time]
-
-        dur = round(float(curr_time) - float(pre_time), 6)
-        e2e = pre_event + '-' + curr_event
-        sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][E2E_seq][e2e] = dur
+def add_one_duration(pid, op, chunk,  e2e_name,index, duration):
+        sgE2E_Duration_DataBank[pid][op][chunk][e2e_name][index] = duration
 
 
-def e2e_interval_calculator(pid, op, len_bytes, req_seq):
+def e2e_interval_calculator(pid, op, chunk, e2e_name, index):
     pre_event = {}
     curr_event = {}
     duration_seq = 0
-    one_req_dict = sgEvent_Property_DataBank_groupbyevent[pid][op][len_bytes][req_seq]
-    req_seq_list = sorted(one_req_dict.keys())
+    one_e2e_recode_dict = sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][index]
+    minuend = one_e2e_recode_dict.get(1)
+    subtrahend = one_e2e_recode_dict.get(0)
 
-    for i in req_seq_list:
-        event = list(one_req_dict[i])[0]
-        if event in conf.gE2E_trace_points_in_one_request:
-            duration_seq += 1
-            if pre_event == {}:
-                pre_event = one_req_dict[1]
-                curr_event = one_req_dict[i]
-                add_one_duration(pid, op, len_bytes, req_seq, pre_event, curr_event, duration_seq)
-                pre_event = curr_event
-            else:
-                curr_event = one_req_dict[i]
-                add_one_duration(pid, op, len_bytes, req_seq, pre_event, curr_event, duration_seq)
-                pre_event = curr_event
-        if event == gvar.gReqEvent_end:  # calculate total duration
-            curr_event = one_req_dict[i]
-            if list(one_req_dict[1])[0] == gvar.gReqEvent_start:
-                add_one_duration(pid, op, len_bytes, req_seq, one_req_dict[1], curr_event, 0)
-
+    if minuend and subtrahend:
+        if minuend[gvar.gmenu_time] < subtrahend[gvar.gmenu_time]:
+            melib.me_warning("{ %s: %s: %s: %d: %d } minuend time is smaller than subtrahend. fail to calculate." %
+                             (pid, op, e2e_name, chunk, index))
+        else:
+            duration = round(float(minuend[gvar.gmenu_time]) - float(subtrahend[gvar.gmenu_time]), 6)
+            add_one_duration(pid, op, chunk,  e2e_name, index, duration)
+    else:
+        melib.me_warning("{ %s: %s: %s: %d: %d } misses event. fail to calculate."%
+                         (pid, op, e2e_name, chunk, index))
     return
 
 
@@ -432,68 +410,32 @@ def e2e_duration_calculator():
     """
     for pid in sgEvent_Property_DataBank_groupbyevent.keys():
         for op in sgEvent_Property_DataBank_groupbyevent[pid].keys():
-            for e2e_name in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
-                for chunk in sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name].keys():
-                    seqs = sorted(sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk].keys())
+            for chunk  in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
+                for e2e_name in sgEvent_Property_DataBank_groupbyevent[pid][op][chunk].keys():
+                    seqs = sorted(sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name].keys())
                     for i in seqs:
-                        e2e_interval_calculator(pid, op, len_bytes, i)
+                        e2e_interval_calculator(pid, op, chunk,  e2e_name,i)
     return
 
 
-def e2e_databank_resolver(option):
-    curr_total = 0
-    software_cost = 0
-    curr_hw_cost = 0
+def e2e_databank_resolver():
+
     for pid in sgE2E_Duration_DataBank.keys():
         for op in sgE2E_Duration_DataBank[pid].keys():
-            for len_bytes in sgE2E_Duration_DataBank[pid][op].keys():
+            for chunk in sgE2E_Duration_DataBank[pid][op].keys():
+                for e2e_name in sgE2E_Duration_DataBank[pid][op][chunk].keys():
 
-                for req_seq in sgE2E_Duration_DataBank[pid][op][len_bytes].keys():
-                    curr_total = curr_hw_cost = 0
-                    for e2e_seq in sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq].keys():
+                    seq = conf.gE2E_durations_trace.index(e2e_name)
 
-                        e2e_event =\
-                            list(sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq])[0]
-                        e2e_duration =\
-                            sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq][e2e_event]
+                    duration_list = \
+                        list(sgE2E_Duration_DataBank[pid][op][chunk][e2e_name].values())
 
-                        if e2e_event == 'Enter_VFS-Exit_VFS':
-                            curr_total = e2e_duration
-                        if e2e_event in conf.gE2E_HW_transfer_duration_define:
-                            curr_hw_cost = e2e_duration
+                    sgE2E_e2e_distribution_by_pid_dic[(pid, op, chunk, seq, e2e_name)] = duration_list
 
-                        if curr_total and curr_hw_cost:
-                            if not sgE2E_hw_distribution_dict:
-                                sgE2E_hw_distribution_dict[(op, len_bytes)] = [curr_hw_cost]
-                            elif (op, len_bytes) not in sgE2E_hw_distribution_dict.keys():
-                                sgE2E_hw_distribution_dict[(op, len_bytes)] = [curr_hw_cost]
-                            elif (op, len_bytes) in sgE2E_hw_distribution_dict.keys():
-                                sgE2E_hw_distribution_dict[(op, len_bytes)].append(curr_hw_cost)
-
-                            software_cost = curr_total - curr_hw_cost
-
-                            if not sgE2E_sw_distribution_dict:
-                                sgE2E_sw_distribution_dict[(op, len_bytes)] = [software_cost]
-                            elif (op, len_bytes) not in sgE2E_sw_distribution_dict.keys():
-                                sgE2E_sw_distribution_dict[(op, len_bytes)] = [software_cost]
-                            elif (op, len_bytes) in sgE2E_sw_distribution_dict.keys():
-                                sgE2E_sw_distribution_dict[(op, len_bytes)].append(software_cost)
-                            curr_hw_cost = curr_total = 0
-
-                        if not sgE2E_e2e_distribution_by_pid_dic:
-                            sgE2E_e2e_distribution_by_pid_dic[(pid, op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (pid, op, len_bytes, e2e_seq, e2e_event) not in sgE2E_e2e_distribution_by_pid_dic.keys():
-                            sgE2E_e2e_distribution_by_pid_dic[(pid, op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (pid, op, len_bytes, e2e_seq, e2e_event) in sgE2E_e2e_distribution_by_pid_dic.keys():
-                            sgE2E_e2e_distribution_by_pid_dic[(pid, op, len_bytes, e2e_seq, e2e_event)].append(e2e_duration)
-
-                        if not sgE2E_e2e_distribution_by_chunk_dic:
-                            sgE2E_e2e_distribution_by_chunk_dic[(op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (op, len_bytes, e2e_seq, e2e_event) not in sgE2E_e2e_distribution_by_chunk_dic.keys():
-                            sgE2E_e2e_distribution_by_chunk_dic[(op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (op, len_bytes, e2e_seq, e2e_event) in sgE2E_e2e_distribution_by_chunk_dic.keys():
-                            sgE2E_e2e_distribution_by_chunk_dic[(op, len_bytes, e2e_seq, e2e_event)].append(e2e_duration)
-
+                    if (pid, op, chunk, seq, e2e_name) not in sgE2E_e2e_distribution_by_chunk_dic.keys():
+                        sgE2E_e2e_distribution_by_chunk_dic[(op, chunk, seq, e2e_name)] = duration_list
+                    else:
+                        sgE2E_e2e_distribution_by_chunk_dic[(op, chunk, seq, e2e_name)].extend(duration_list)
     return
 
 
@@ -503,7 +445,7 @@ def e2e_histogram_pdf_show_by_pid():
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        hist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_histogram_by_pid.pdf")
+        hist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_histogram_by_pid-groupbyevnt.pdf")
     except:
         melib.me_warning("Create hist_pdf file failed.")
         return
@@ -570,7 +512,7 @@ def e2e_scattergram_pdf_show_by_pid():
     label_line = ['r.', 'b.', 'y.', 'g.', 'm.', 'c:', 'r-', 'b-', 'y-', 'g-', 'm--', 'c--']
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
     try:
-        dist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_scattergram_by_pid.pdf")
+        dist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_scattergram_by_pid-groupbyevent.pdf")
     except:
         melib.me_warning("Create dist_pdf file failed.")
         return
@@ -812,32 +754,32 @@ def e2e_stat_analyzer_by_pid():
 
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
-    fd = open(gvar.gOutput_Dir_Default+"Report_by_pid.log", 'w')
+    fd = open(gvar.gOutput_Dir_Default+"Report_by_pid-groupbyevent.log", 'w')
     bak_stdout = sys.stdout
     sys.stdout = fd
-    for (pid, op, len_bytes, e2e_seq, e2e_event) in pid_op_len_seq_event_tuple_list:
-        curr_e2e_event = e2e_event
-        if curr_pid is not pid or curr_len_bytes != len_bytes:
+    for (pid, op, chunk, seq, e2e_name) in pid_op_len_seq_event_tuple_list:
+        curr_e2e_event = e2e_name
+        if curr_pid is not pid or curr_len_bytes != chunk:
             curr_pid = pid
-            curr_len_bytes = len_bytes
+            curr_len_bytes = chunk
             print("          ")
             print("  -----------------------------------------------------------")
-            print("  Task-PID: %s. Chunk Size : %s bytes[%s]" % (pid, len_bytes, op))
+            print("  Task-PID: %s. Chunk Size : %s bytes[%s]" % (pid, chunk, op))
         first_event = curr_e2e_event.split('-')[0]
         second_event = curr_e2e_event.split('-')[-1]
-        ln = len(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)])
-        mx = max(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)])
-        mn = min(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)])
-        mean = round(np.mean(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]), 6)
-        median = round(np.median(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]), 6)
-        print("    %d: %s<---->%s" % (e2e_seq, first_event, second_event))
+        ln = len(src_dict[(pid, op, chunk, seq, e2e_name)])
+        mx = max(src_dict[(pid, op, chunk, seq, e2e_name)])
+        mn = min(src_dict[(pid, op, chunk, seq, e2e_name)])
+        mean = round(np.mean(src_dict[(pid, op, chunk, seq, e2e_name)]), 6)
+        median = round(np.median(src_dict[(pid, op, chunk, seq, e2e_name)]), 6)
+        print("    %d: %s<---->%s" % (seq, first_event, second_event))
         print("          |--%d cases"% ln)
         print("          |--Mean:[%f s], Median:[%f s], Max:[%f s], Min:[%f s]" % (mean, median, mx, mn))
         if first_event == gvar.gReqEvent_start and second_event == gvar.gReqEvent_end:
             print("          |-- I/O speed:[%0.3f MB/s (mean)], [%0.3f MB/s (median)]" %
                     (
-                        round((1/float(mean) * float(len_bytes))/1024/1024, 3),
-                        round((1/float(median) * float(len_bytes)) / 1024 / 1024, 3)
+                        round((1/float(mean) * float(chunk))/1024/1024, 3),
+                        round((1/float(median) * float(chunk)) / 1024 / 1024, 3)
                     )
                   )
     sys.stdout = bak_stdout
@@ -989,32 +931,37 @@ def e2e_event_main():
                                   sgEvent_Property_DataBank_groupbyevent)
 
         """  Step 1 """
-        print("Step 1: Calculating E2E duration raw data bank ......")
+        print("Step 1: Calculating E2E duration raw data ......")
         e2e_duration_calculator()  # fill in sgE2E_Duration_DataBank.
-        '''
+
         if sgE2E_Duration_DataBank:
-            #melib.me_pprint_dict_scream(sgE2E_Duration_DataBank)
-            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"01-sgE2E_Duration_DataBank.log",
+
+            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default + "01-sgE2E_Duration_DataBank_groupbyevent.log",
                                       sgE2E_Duration_DataBank)
+            #melib.me_pprint_dict_scream(sgE2E_Duration_DataBank)
             #melib.me_pickle_save_obj("./01-pickle-sgE2E_Duration_DataBank.log",
             #                         sgE2E_Duration_DataBank)
 
             """ Step 2 """
             print("Step 2: databank resolving ......")
-            e2e_databank_resolver('default')  # to resolve the databank and fill in several key dictionaries.
+            e2e_databank_resolver()  # to resolve the databank and fill in several key dictionaries.
 
             if sgE2E_e2e_distribution_by_pid_dic:  # analyze and generate the result file by pid
                 #melib.me_pprint_dict_scream(sgE2E_e2e_distribution_by_pid_dic)
-                melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-sgE2E_e2e_distribution_by_pid_dic.log",
-                                          sgE2E_e2e_distribution_by_pid_dic)
+                melib.me_pprint_dict_file(gvar.gOutput_Dir_Default +
+                                           "./02-sgE2E_e2e_distribution_by_pid_dic-groupbyevent.log",
+                                           sgE2E_e2e_distribution_by_pid_dic)
+
                 """ Step 3 """
                 print("Step 3-1: analyzing I/O status by pid ......")
                 e2e_stat_analyzer_by_pid()
+
                 print("Step 3-2: outputting scattergram pdf by pid ......")
                 e2e_scattergram_pdf_show_by_pid()
+
                 print("Step 3-3: outputting histogram pdf by pid ......")
                 e2e_histogram_pdf_show_by_pid()
-
+                '''
             if sgE2E_e2e_distribution_by_chunk_dic:  # analyze and generate the result file by op+len
                 melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-sgE2E_e2e_distribution_by_chunk_dic.log",
                                           sgE2E_e2e_distribution_by_chunk_dic)
