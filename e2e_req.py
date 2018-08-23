@@ -618,42 +618,54 @@ def e2e_databank_resolver(option):
                         e2e_duration =\
                             sgE2E_Duration_DataBank[pid][op][len_bytes][req_seq][e2e_seq][e2e_event]
 
-                        if e2e_event == 'Enter_VFS-Exit_VFS':
+                        if e2e_event == gvar.gReqEvent_start + '-' + gvar.gReqEvent_end:
                             curr_total = e2e_duration
                         if e2e_event in conf.gE2E_HW_transfer_duration_define:
                             curr_hw_cost = e2e_duration
 
                         if curr_total and curr_hw_cost:
+                            sgE2E_hw_distribution_dict.setdefault((op, len_bytes), []).append(curr_hw_cost)
+
+                            '''
                             if not sgE2E_hw_distribution_dict:
                                 sgE2E_hw_distribution_dict[(op, len_bytes)] = [curr_hw_cost]
                             elif (op, len_bytes) not in sgE2E_hw_distribution_dict.keys():
                                 sgE2E_hw_distribution_dict[(op, len_bytes)] = [curr_hw_cost]
                             elif (op, len_bytes) in sgE2E_hw_distribution_dict.keys():
                                 sgE2E_hw_distribution_dict[(op, len_bytes)].append(curr_hw_cost)
-
+                            '''
                             software_cost = curr_total - curr_hw_cost
-
+                            sgE2E_sw_distribution_dict.setdefault((op, len_bytes), []).append(software_cost)
+                            '''
                             if not sgE2E_sw_distribution_dict:
                                 sgE2E_sw_distribution_dict[(op, len_bytes)] = [software_cost]
                             elif (op, len_bytes) not in sgE2E_sw_distribution_dict.keys():
                                 sgE2E_sw_distribution_dict[(op, len_bytes)] = [software_cost]
                             elif (op, len_bytes) in sgE2E_sw_distribution_dict.keys():
                                 sgE2E_sw_distribution_dict[(op, len_bytes)].append(software_cost)
+                            '''
                             curr_hw_cost = curr_total = 0
 
+                        sgE2E_e2e_distribution_by_pid_dic.setdefault((pid, op, len_bytes, e2e_seq, e2e_event),
+                                                                    []).append(e2e_duration)
+                        ''''
                         if not sgE2E_e2e_distribution_by_pid_dic:
                             sgE2E_e2e_distribution_by_pid_dic[(pid, op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
                         elif (pid, op, len_bytes, e2e_seq, e2e_event) not in sgE2E_e2e_distribution_by_pid_dic.keys():
                             sgE2E_e2e_distribution_by_pid_dic[(pid, op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
                         elif (pid, op, len_bytes, e2e_seq, e2e_event) in sgE2E_e2e_distribution_by_pid_dic.keys():
                             sgE2E_e2e_distribution_by_pid_dic[(pid, op, len_bytes, e2e_seq, e2e_event)].append(e2e_duration)
-
+                        '''
+                        sgE2E_e2e_distribution_by_chunk_dic.setdefault((op, len_bytes, e2e_seq, e2e_event),
+                                                                     []).append(e2e_duration)
+                        '''
                         if not sgE2E_e2e_distribution_by_chunk_dic:
                             sgE2E_e2e_distribution_by_chunk_dic[(op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
                         elif (op, len_bytes, e2e_seq, e2e_event) not in sgE2E_e2e_distribution_by_chunk_dic.keys():
                             sgE2E_e2e_distribution_by_chunk_dic[(op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
                         elif (op, len_bytes, e2e_seq, e2e_event) in sgE2E_e2e_distribution_by_chunk_dic.keys():
                             sgE2E_e2e_distribution_by_chunk_dic[(op, len_bytes, e2e_seq, e2e_event)].append(e2e_duration)
+                        '''
 
     return
 

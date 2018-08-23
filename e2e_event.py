@@ -221,7 +221,7 @@ def is_event_exist_in_request_databank(pid, op, vfs_len, seq, event_str):
 '''
 
 
-def add_subtrahend_to_db(event_info_dict, e2e_name, item_seq):
+def add_subtrahend_to_db(event_info_dict, e2e_name, record_index):
     pid = event_info_dict[gvar.gmenu_PID]
     op = event_info_dict[gvar.gmenu_op]
     chunk = event_info_dict[gvar.gmenu_len]
@@ -230,15 +230,14 @@ def add_subtrahend_to_db(event_info_dict, e2e_name, item_seq):
     lba = event_info_dict[gvar.gmenu_lba]
     lines = gvar.gCurr_line
 
-    if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq].get(0):
-        melib.me_warning("Failed to add Line %d, since %s already exists in data bank. e2e %s, sub_event %s." %
-                         (lines, event, e2e_name, item_seq))
-
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index].get(0) is not None:
+        melib.me_warning("Failed to add subtrahend, Line %d, since %s already exists in data bank. e2e %s,"
+                         "recode index %s." % (lines, event, e2e_name, record_index))
     else:
-        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq][0][gvar.gmenu_time] = timestamp
-        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq][0][gvar.gmenu_lba] = lba
+        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index][0][gvar.gmenu_time] = timestamp
+        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index][0][gvar.gmenu_lba] = lba
 
-    sgIndex_of_LBA_in_DB[(pid, op, chunk, e2e_name, lba)] = item_seq
+    sgIndex_of_LBA_in_DB[(pid, op, chunk, e2e_name, lba)] = record_index
 
 
 def add_minuend_to_db(event_info_dict, e2e_name, item_seq):
@@ -251,7 +250,8 @@ def add_minuend_to_db(event_info_dict, e2e_name, item_seq):
     lines = gvar.gCurr_line
 
     if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][item_seq].get(1):
-        melib.me_warning("Failed to add Line %d, since %s already exists in data bank. e2e %s, sub_event %s." %
+        melib.me_warning("Failed to add minuend, Line %d, since %s already exists in data bank. e2e %s"
+                         " recode index %d." %
                          (lines, event, e2e_name, item_seq))
 
     else:
@@ -270,7 +270,7 @@ def add_new_branch_into_tree(event_info_dict, e2e_match_dict):
     for i in e2e_match_dict.keys():
         # This is the first req associated with PID/op/e2e/chunk
         e2e_name = conf.gE2E_durations_trace[i]  # get the e2e name by its index
-        item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]= 1 # this is the first item of e2e recode.
+        item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name] = 1 # this is the first item of e2e recode.
         seq = e2e_match_dict[i]  # get its event index, 0/1
         if seq == 0:
             # here only adds first event, because so far it doesn't exist other event in this pid recode.
@@ -283,26 +283,53 @@ def add_new_event_into_tree(property_dict, match_dict):
     pid = property_dict[gvar.gmenu_PID]
     chunk = property_dict[gvar.gmenu_len]
     op = property_dict[gvar.gmenu_op]
+    lba = property_dict[gvar.gmenu_lba]
 
-    for i in match_dict.keys():
-        e2e_name = conf.gE2E_durations_trace[i]
+    for e2e_seq in match_dict.keys():
+        e2e_name = conf.gE2E_durations_trace[e2e_seq]
         if chunk not in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
             add_new_branch_into_tree(property_dict, match_dict)
         elif e2e_name not in sgEvent_Property_DataBank_groupbyevent[pid][op][chunk].keys():
             add_new_branch_into_tree(property_dict, match_dict)
         else:
-            seq = match_dict[i]
-            if seq == 0:
+            subtra_or_minuend = match_dict[e2e_seq]
+            if subtra_or_minuend == 0:
                 sgItems_counter_per_E2E[pid][op][chunk][e2e_name] += 1
-                item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]
-                add_subtrahend_to_db(property_dict, e2e_name, item_seq)
-            elif seq == 1:
-                lba = property_dict[gvar.gmenu_lba]
-                item_seq = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, lba))
-                if item_seq is not None:
-                    add_minuend_to_db(property_dict, e2e_name, item_seq)
+                record_index = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]
+                add_subtrahend_to_db(property_dict, e2e_name, record_index)
+            elif subtra_or_minuend == 1:
+                record_index = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, lba))
+                if record_index is not None:
+                    add_minuend_to_db(property_dict, e2e_name, record_index)
                 else:
-                    melib.me_error("Line %d cannot find its relavent subtrahend item" % gvar.gCurr_line)
+                    found_count = 0
+                    first_found_record_index = None
+                    last_found_record_index = None
+
+                    if lba is None:
+                        for lba_temp in sgLBA_list_of_PID_OP_chunk[(pid, op, chunk)]:
+                            found_index = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, lba_temp))
+                            if found_index is not None:
+                                if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][found_index].get(1) is None:
+                                    if found_count == 0:
+                                        first_found_record_index = found_index
+                                    last_found_record_index = found_index
+                                    found_count += 1
+
+                        if found_count > 1:
+                            melib.me_warning("Line %d, there are  %d relevant subtrahend items found for e2e %s."
+                                           % (gvar.gCurr_line, found_count, e2e_name))
+
+                    elif lba is not None:
+                        first_found_record_index = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, None))
+
+                    record_index = first_found_record_index  # use the first one we found FIXME
+
+                    if record_index is None:
+                        melib.me_error("Line %d cannot find its relevant subtrahend item for e2e %s." %
+                                       (gvar.gCurr_line, e2e_name))
+                    else:
+                        add_minuend_to_db(property_dict, e2e_name, record_index)
 
 
 def figure_out_e2e_match_dict(event_name):
@@ -357,7 +384,6 @@ def add_to_event_property_tree(property_dict):
     ''' match_dict: {e2e index in the gE2E_durations_trace: 0/1}
     0--the first event, 1--the second event.'''
     if match_dict:
-        #print("lba %s op  %s, len %d." % (lba, op, len_bytes))
         '''
         if (lba is not None) and
                 (lba not in sgLBA_list_of_PID_OP_chunk[(pid, op, len_bytes)]):
@@ -410,7 +436,7 @@ def e2e_duration_calculator():
     """
     for pid in sgEvent_Property_DataBank_groupbyevent.keys():
         for op in sgEvent_Property_DataBank_groupbyevent[pid].keys():
-            for chunk  in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
+            for chunk in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
                 for e2e_name in sgEvent_Property_DataBank_groupbyevent[pid][op][chunk].keys():
                     seqs = sorted(sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name].keys())
                     for i in seqs:
@@ -789,9 +815,6 @@ def e2e_stat_analyzer_by_pid():
 def e2e_stat_analyzer_by_op_len():
 
     src_dict = sgE2E_e2e_distribution_by_chunk_dic
-
-    curr_pid = ''
-    pdf_ok = True
     curr_op = ''
     curr_len_bytes = 0
     curr_e2e_seq = 0
@@ -831,95 +854,85 @@ def e2e_stat_analyzer_by_op_len():
     fd.close()
 
 
-def software_hardware_duration_division():
+def e2e_duration_bar_scatter_pdf_show():
 
-    if not sgE2E_sw_distribution_dict:
+    if not sgE2E_e2e_distribution_by_pid_dic:
         return
-    if not sgE2E_hw_distribution_dict:
-        return
-    if not sgE2E_e2e_distribution_by_chunk_dic:
-        return
-    hw_dict = sgE2E_hw_distribution_dict
-    sw_dict = sgE2E_sw_distribution_dict
-    distr_dict = sgE2E_e2e_distribution_by_chunk_dic
-    op_len_tuple_list = sorted(hw_dict.keys())
-    colors = ["blue", "red", "coral", "green", "yellow", "orange"]
-    
+
+    src_dict = sgE2E_e2e_distribution_by_pid_dic
+
+    pre_pid = ''
+    pre_op = ''
+    pre_len_bytes = 0
+    e2e_list = []
+    e2e_duration_list = []
+    e2e_record_quantities_dict = {}
+    max_events = 10
+    min_items_required = 10
+    pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
+
     try:
-        pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_hw_sf_division.pdf")
+        pdf = PdfPages(gvar.gOutput_Dir_Default+"e2e_duration_bar_scatter_per_pid.pdf")
     except:
-        melib.me_warning("Create sgE2E_hw_sf_division file failed.")
+        melib.me_warning("Create e2e_duration_bar_scatter_per_pid file failed.")
         return
-    """  Step 1: Hardware and software duration distribution """
-    for (op, length) in op_len_tuple_list:
 
-        hw_items_ln = len(hw_dict[(op, length)])
-
-        if (op, length) in sw_dict.keys():
-            sw_items_ln = len(sw_dict[(op, length)])
-            if hw_items_ln != sw_items_ln:
-                continue
-            hw_list_data = hw_dict[(op, length)][gvar.gDefault_graph_start_from_item:gvar.gDefault_graph_max_items]
-            sw_list_data = sw_dict[(op, length)][gvar.gDefault_graph_start_from_item:gvar.gDefault_graph_max_items]
-
-            hw_y = [i * 1000 for i in hw_list_data]
-            sw_y = [i * 1000 for i in sw_list_data]
-            x = np.arange(len(hw_list_data)) + 1
-
-            plt.figure()
-            plt.plot(x, hw_y, 'g-', alpha=0.75, linewidth=1.0, label='HW')
-            plt.plot(x, sw_y, 'r-', alpha=0.75, linewidth=1.0, label='SW')
-            plt.ylabel('Millisecond (ms)', fontsize=10)
-            plt.xlabel('T', fontsize=10)
-            title = op + '/' + str(length)  #'/' + e2e_event
-            plt.title(title)
-            plt.grid(False)
-            plt.legend(fontsize=10, loc='best')
-            pdf.savefig()
-            plt.close()
-    """
-    Step 2: percentage pie char of each layer duration 
-    """
-    curr_op = 'none'
-    curr_len_bytes = 0
-    op_len_seq_event_tuple_list = sorted(distr_dict.keys())
-    labels = []
-    quants = []
-    items = 0
-    for (op, len_bytes, e2e_seq, e2e_event) in op_len_seq_event_tuple_list:
-        if curr_op is not 'none':
-            if curr_op is not op or curr_len_bytes != len_bytes:
-                if items > 1:
-                    x = [i * 1000000 for i in quants]
+    for (curr_pid, curr_op, curr_chunk, curr_seq, curr_e2e_name) in pid_op_len_seq_event_tuple_list:
+        title = curr_pid + '/' + curr_op + '/' + str(curr_chunk)
+        if len(src_dict[(curr_pid, curr_op, curr_chunk, curr_seq, curr_e2e_name)]) < min_items_required:
+            melib.me_warning("The e2e %s only has %d records, cannot add into e2e_duration_bar_scatter_per_pid" %
+                             (title, len(src_dict[(curr_pid, curr_op, curr_chunk, curr_seq, curr_e2e_name)])))
+            continue
+        if pre_pid is not curr_pid or pre_len_bytes != curr_chunk:
+            if e2e_list and e2e_duration_list:
+                title = pre_pid + '/' + pre_op + '/' + str(pre_len_bytes)
+                if len(e2e_list) < max_events:
+                    # draw the bar chart
+                    x_pos = np.arange(len(e2e_list))
                     plt.figure()
-                    plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True)
-                    plt.title(curr_op + '/' + str(curr_len_bytes))
-                    plt.axis('equal')
-                    plt.legend(fontsize=10, loc='best', labels=labels)
+                    plt.bar(x_pos, e2e_duration_list, 0.35, align='center', alpha=0.5, color="green", yerr=0.000001)
+                    plt.xticks(x_pos-0.5, e2e_list, fontsize=5, rotation=10)
+                    plt.ylabel('ms')
+                    plt.title(title)
+                    for a, b in zip(x_pos, e2e_duration_list):
+                        plt.text(a, b+0.001, '%.3fms\n%d items' % (b, e2e_record_quantities_dict[b]),
+                                 ha='center', va='bottom', fontsize=5, color='red')
                     pdf.savefig()
-                    plt.close()
-                quants = []
-                labels = []
-                items = 0
+                else:
+                    melib.me_error("There are %d e2e events, over the maximum limited number %d. failed to draw %s." %
+                                   (len(e2e_list), max_events, title))
+                e2e_list = []
+                e2e_duration_list = []
+                e2e_record_quantities_dict.clear()
 
-        if e2e_seq != 0:  # if e2e_seq is 0, this is a total duration
-            labels.append(e2e_event)
-            mean = round(np.mean(distr_dict[(op, len_bytes, e2e_seq, e2e_event)]), 6)
-            quants.append(mean)
-            items += 1
-            curr_op = op
-            curr_len_bytes = len_bytes
+            pre_pid = curr_pid
+            pre_len_bytes = curr_chunk
+            pre_op = curr_op
 
-    if quants and labels:
-        if items > 1:
-            x = [i * 1000000 for i in quants]  # convert float to int
+        e2e_list.append(curr_e2e_name)
+        mean = round(np.mean(src_dict[(curr_pid, curr_op, curr_chunk, curr_seq, curr_e2e_name)]), 6)
+        mean = 1000 * mean  # transfer ns to ms
+        #median = round(np.median(src_dict[(pid, op, chunk, seq, e2e_name)]), 6)
+        e2e_duration_list.append(mean)
+        e2e_record_quantities_dict[mean] = len(src_dict[(curr_pid, curr_op, curr_chunk, curr_seq, curr_e2e_name)])
+
+    if e2e_list and e2e_duration_list:
+        title = pre_pid + '/' + pre_op + '/' + str(pre_len_bytes)
+        if len(e2e_list) < max_events:
+            # draw the bar chart
+            x_pos = np.arange(len(e2e_list))
             plt.figure()
-            plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, startangle=90)
-            plt.axis('equal')
-            plt.title(curr_op + '/' + str(curr_len_bytes))
-            plt.legend(fontsize=5, labels=labels)
+            plt.bar(x_pos, e2e_duration_list, 0.35, align='center', alpha=0.5, color="green", yerr=0.000001)
+            plt.xticks(x_pos-0.5, e2e_list, fontsize=5, rotation=10)
+            plt.ylabel('ms')
+            plt.title(title)
+            for a, b in zip(x_pos, e2e_duration_list):
+                plt.text(a, b + 0.001, '%.3fms\n%d items' % (b, e2e_record_quantities_dict[b]),
+                         ha='center', va='bottom', fontsize=5, color='red')
             pdf.savefig()
-            plt.close()
+        else:
+            melib.me_error("There are %d e2e events, over the maximum limited number %d. failed to draw %s."%
+                           (len(e2e_list), max_events, title))
 
     pdf.close()
 
@@ -961,10 +974,12 @@ def e2e_event_main():
 
                 print("Step 3-3: outputting histogram pdf by pid ......")
                 e2e_histogram_pdf_show_by_pid()
-                '''
+
             if sgE2E_e2e_distribution_by_chunk_dic:  # analyze and generate the result file by op+len
-                melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-sgE2E_e2e_distribution_by_chunk_dic.log",
+                melib.me_pprint_dict_file(gvar.gOutput_Dir_Default +
+                                          "./02-sgE2E_e2e_distribution_by_chunk_dic-groupbyevent.log",
                                           sgE2E_e2e_distribution_by_chunk_dic)
+
                 """ Step 4 """
                 print("Step 4-1: analyzing I/O status by op_len ......")
                 e2e_stat_analyzer_by_op_len()
@@ -973,9 +988,9 @@ def e2e_event_main():
                 print("Step 4-3: outputting histogram pdf by op_len ......")
                 e2e_histogram_pdf_show_by_op_len()
         """ Step 5 """
-        print("Step 5: SW and HW duration division ....")
-        software_hardware_duration_division()
-        '''
+        print("Step 5: Creating e2e_duration_bar_scatter_per_pid.pdf  ....")
+        e2e_duration_bar_scatter_pdf_show()
+
     else:
         melib.me_warning("sgEvent_Property_DataBank_groupbyevent is empty.")
         raise melib.DefinedExcepton("Parsing failure")

@@ -23,7 +23,7 @@ import iokpp
 
 VERSION = "0.0.2-20180701"
 
-gFileIn = " "
+gFileIn = None
 gKeep_Files = 0  # used to control if delete the files created
 gPIDs_Files_dic = {}
 
@@ -47,12 +47,13 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '-h-i:-v-d-k',
                                    ['split', 'keep', 'debug', 'help', 'version', 'input=',
-                                    'e2e=', 'out=', 'pending', 'wa'])
+                                    'e2e=', 'out=', 'pending', 'wa', 'start=', 'end='])
     except getopt.GetoptError:
             melib.usage()
             sys.exit(2)
     for opt_name, opt_value in opts:
         if opt_name in ('-h', '--help'):
+            print("\n%s version: %s" % (os.path.basename(sys.argv[0]), VERSION))
             melib.usage()
             exit()
         if opt_name in ('-v', '--version'):
@@ -78,7 +79,22 @@ def main():
                 gvar.gE2E_mode = e2e_mode
             else:
                 print("E2E will use default mode %s." % gvar.gE2E_mode)
-
+        if opt_name in ('--start', 'start'):
+            start_index = opt_value
+            if str.isdigit(start_index):
+                gvar.gDefault_graph_start_from_item = int(start_index)
+                print("Change start index from %d." % gvar.gDefault_graph_start_from_item)
+            else:
+                print("Error: The specified start index is not an valid integer.")
+                exit(1)
+        if opt_name in ('--end', 'end'):
+            end_index = opt_value
+            if str.isdigit(end_index):
+                gvar.gDefault_graph_max_items = int(end_index)
+                print("Change index end at %d." % gvar.gDefault_graph_max_items)
+            else:
+                print("Error: The specified end index is not an valid integer.")
+                exit(1)
         if opt_name in ('--out', 'out'):
             gvar.gOutput_Dir_Default = opt_value
         if opt_name in ('--pending', 'pending'):
@@ -86,10 +102,20 @@ def main():
         if opt_name in ('--wa', 'wa'):
             is_wa = True
     """ mkdir the output folder """
-    melib.mkdir(gvar.gOutput_Dir_Default)
+
     if not gFileIn:
-        print("No Trace log specified. See help. (Use -h)")
+        print("No input log specified. See help. (Use -h)")
         sys.exit(1)
+
+    else:
+        """ open the log file """
+        try:
+            lines = open(gFileIn, "r").readlines()
+        except:
+            print("Problem opening file: %s" % gFileIn)
+            sys.exit(1)
+
+    melib.mkdir(gvar.gOutput_Dir_Default)
     """ open the warning log file """
     try:
         melib.LogFD = open(gvar.gOutput_Dir_Default + "/warning.log", "wt")
@@ -97,16 +123,12 @@ def main():
         print("Open/Create Warning.log failed.")
         melib.LogFD = 0
 
-    """ open the log file """
-    try:
-        lines = open(gFileIn, "r").readlines()
-    except:
-        print("Problem opening file: %s" % gFileIn)
-        sys.exit(1)
+
 
     if is_split:
         gPIDs_Files_dic = split.split_file_by_pid(lines)
-        melib.me_dbg(gPIDs_Files_dic)
+        print("Split into %d files." % len(gPIDs_Files_dic))
+        print(gPIDs_Files_dic)
 
     if is_e2e or is_wa:
         iokpp.iokpp_main(lines, is_e2e, is_wa)

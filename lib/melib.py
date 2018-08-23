@@ -188,31 +188,50 @@ class DefinedExcepton(Exception):
 
 
 def usage():
-    print("""Usage: %s [<options>] <filename>
-    This program parses the output from the linux function trace (ftrace)
+    print("""\nUsage: %s [<options>] [-i <filename>] [--out <output folder>]
+    
+    This program is to parse the log which came from ftrace or IOKPP back-end tool.
+    Before using this tool, make sure your log contains these key items:
+    [ TASK-PID   CPU#  TIMESTAMP  FUNCTION ].
+    
     Options:
-        -d, --debug Print more information for debugging, this will be very noisy.
-        -k, --keep  Don't delete the files created
-        -h, --help  Show this usage help.
-        -V/v, --version   Show version information.
-        --out <output file folder>  specify the output directory 
-        -i <file>   Specify the ftrace log, you can use trace-c.sh and
-                    trace-cmd easily to get this log. 
+        -d/--debug  Print more information for debugging, this will be very noisy.
+        -h/--help   Show this usage help.
+        -V/v        Show version.
+        --out <output file folder>
+                    Specify the output directory 
+                    
+        -i <file>   Specify the input fil
         --split     Split original trace log into several file by PID
-                      eg: ftparser -f ftrace.log --split
         --e2e <group mode>      
                     Print out IO performance key parameters based on the
-                    input file from ftrace.
-                    There are two kinds of group mode, event and request.
-                    If specifying 'request', that will group each request.
-                    If specifying 'event', that will just group each e2e.
+                    specified input log file.
+                    There are two kinds of group mode, "event" and "request".
+               
+               --e2e request : The all events associated with one I/O request, will
+                               be grouped together, then calculate each stage time
+                               consumption.
+               --e2e event:    This will just group the same e2e (from event A to
+                               event B) together, and then calculate its time consumption.
+        --start <start index>
+                    Specify from which index the histogram/bar/distribution
+                    chart start to show on output file.
+                    
+        --end <end index>
+                    Specify from which index the histogram/bar/distribution
+                    chart stop to show on output file.
                     
         --wa        Analyze the system level WA (write amplification)                        
         --protocol [<scsi|nvme>]
-                        protocol analyzer.
+                    SCSI and NVMe protocol analyzer.
+    Eg:
+        1. Split the log into several file according to PID.
+        ftparser -i ftrace.log  --split
+        2. Parse the log and show its record frm index 1 to 100
+        ftparser -i ftrace.log  --e2e event --start 1 --end 100 --out ./out
+        3. Calculate the WA in the log
+        ftparser -i ftrace.log  --wa
         
-        eg:
-            ftparser -f ./ftrace.log --wa
     """ % os.path.basename(sys.argv[0]))
     sys.exit(1)
 

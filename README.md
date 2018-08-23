@@ -1,23 +1,26 @@
-Ftparser (ftrace parser) or IOKPP (I/O key performance parameter)
+IOKPP front-end (I/O key performance parameter ) or Ftparser (ftrace parser)
 ============
 Free use of this software is granted under the terms of the GNU Public License (GPL).
 
-This tool is used to analyze/parse the linux function trace (ftrace) log,
-and provide the I/O performance related parameters. the key parameters include:
+This tool is a front-end part of IOKPP, used to analyze/parse the trace log of IOKPP back-end tool,
+and provide the I/O performance related parameters. The back-end of IOKPP runs on the target machine
+side, which is used to trigger Linux I/O request event  and collect trace event log, and the front-end
+tool run on the user end PC.
 
-1. Time consumption from one event to another event
+The key functions include:
+
+1. Time consumption which costs from one event to another event
 2. System layer WA(write amplification)
 3. Time costs compare between Hardware data transfer and  software layers happened.
-4. SCSI protocol analyze
+4. SCSI protocol analyzer
 5. Multiple I/O requests distribution on the storage device
-6. Time costs on certain trace range distribution
+6. Time costs distribution on specified events
 
 At the initial version, this tool is purely developed by python and mainly based
 on the ftrace log.
 About ftrace (https://elinux.org/Ftrace).
 
 ============
-
 Dependencies
 ============
 
@@ -26,8 +29,9 @@ Dependencies
  * matplotlib
 
 
+============
 Usage
-=====
+============
  eg: ftparser -i ftrace_output_file.log --e2e
 
     This program parses the output from the linux function trace (ftrace)
@@ -50,23 +54,22 @@ Usage
         eg:
             ftparser -f ./ftrace.log --wa
 
-TODO
-====
- * How to fix the condition that there are some requests missing event points
- * Add system level WA analyzer
+============
+TODO list
+============
  * Add SCSI protocol analyzer
     - 1. multiple tasks distribution
     - 2. accessing chunk size distribution
     - 3. LBA
- * Add the support for the Sync I/O read
- * Add the support for the read-ahead
-Known Issues
-FIXME
-=============
- *
+
+============
+FIXME list
+============
+ * Fix the condition that there are some requests missing event points
 
 
+============
 Developers
-=============
+============
  Bean Huo beanhuo@micron.com
 

@@ -140,7 +140,12 @@ gE2E_trace_points_in_one_request = [
 
 gE2E_durations_trace = [
             gvar.gReqEvent_start + '-' + gvar.gReqEvent_end,
+            gvar.gReqEvent_start + '-' + 'block_bio_remap',
+            'block_bio_remap-block_rq_issue',
+            'block_rq_issue-scsi_dispatch_cmd_start',
             'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done',
+            'scsi_dispatch_cmd_done-block_rq_complete',
+            'block_rq_complete-' + gvar.gReqEvent_end
 ]
 
 gE2E_HW_transfer_duration_define = (

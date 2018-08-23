@@ -31,9 +31,10 @@ which are showed in the histogram and scatter graph.
 gDefault_graph_start_from_item = 0
 gDefault_graph_max_items = 4096
 gDefault_histogram_threshold = 1024
-gSCSI_LogicalBlockSize_Bytes = 4096
-gLogicalSectorSize_Bytes = 512
-gSectorsPerBlock = gSCSI_LogicalBlockSize_Bytes / gLogicalSectorSize_Bytes
+
+gSCSI_LogicalBlockSize_Bytes = 4096  # the default logical block size in SCSI layer
+gLogicalSectorSize_Bytes = 512       # the default logical sector size in block layer
+gSectorsPerBlock = gSCSI_LogicalBlockSize_Bytes / gLogicalSectorSize_Bytes  # how many sectors per block
 
 gmenu_task = 'Task'
 gmenu_PID = 'PID'
