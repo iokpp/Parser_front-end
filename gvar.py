@@ -25,11 +25,11 @@ specified in the command options.
 gRunning_pending_mode = False
 
 """
-gDefault_graph_max_items is used to specify the maximum items 
+gDefault_graph_window_end_at_item is used to specify the maximum items 
 which are showed in the histogram and scatter graph.
 """
-gDefault_graph_start_from_item = 0
-gDefault_graph_max_items = 4096
+gDefault_graph_window_start_from_item = 0
+gDefault_graph_window_end_at_item = 4096
 gDefault_histogram_threshold = 1024
 
 gSCSI_LogicalBlockSize_Bytes = 4096  # the default logical block size in SCSI layer
@@ -75,6 +75,9 @@ gE2E_mode_group_by_event = 'event'
 gE2E_mode_group_by_request = 'request'
 gE2E_mode = gE2E_mode_group_by_event  # default mode
 
+gWA_RA_mode_by_pid = 'pid'
+gWA_RA_mode_by_task = 'task'
+gWA_RA_mode = gWA_RA_mode_by_task
 
 def analyzer_header_of_file(line):
 

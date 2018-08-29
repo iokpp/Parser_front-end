@@ -109,7 +109,10 @@ sgEvent_Property_DataBank_groupbyevent[pid][op][e2e_name][chunk][seq n][0/1][LBA
 '''
 sgEvent_Property_DataBank_groupbyevent = melib.MultipleDimensionNestDict()
 
-# [pid][op][chunk][req_seq][e2e_seq][e2e_name]=duration
+"""
+assign value:
+[pid][op][chunk][req_seq][e2e_seq][e2e_name]=duration
+"""
 sgE2E_Duration_DataBank = melib.MultipleDimensionNestDict()
 
 '''
@@ -124,20 +127,20 @@ eg:
 sgCurrent_info = melib.MultipleDimensionNestDict()
 
 '''
-sgE2E_e2e_distribution_by_pid_dic is one dimension dictionary,
+sgE2E_duration_dist_Per_PID_dic is one dimension dictionary,
 its key is tuple which consists of (pid, op, len, e2e_seq, e2e_name)
 its value is the list which contains the duration of e2e. [0.121, 0.254,...].
 the items are split by PID/op/len
 '''
-sgE2E_e2e_distribution_by_pid_dic = {}
+sgE2E_duration_dist_Per_PID_dic = {}
 
 '''
-sgE2E_e2e_distribution_by_chunk_dic is the similar with
-above sgE2E_e2e_distribution_by_pid_dic, but it is split by op/len.
+sgE2E_duration_dist_Per_Chunk_dic is the similar with
+above sgE2E_duration_dist_Per_PID_dic, but it is split by op/len.
 
 (op,len, e2e_seq, e2e_name):[a,b,c,......]
 '''
-sgE2E_e2e_distribution_by_chunk_dic = {}
+sgE2E_duration_dist_Per_Chunk_dic = {}
 
 
 '''
@@ -346,7 +349,7 @@ def add_to_event_property_tree(property_dict):
 
     """
     Fill in the data bank according to property_dict, in which contains
-    the event information by the form of dictionary.
+    the event information.
     :param property_dict:
     :return: None
     """
@@ -364,7 +367,7 @@ def add_to_event_property_tree(property_dict):
         op = property_dict[gvar.gmenu_op]
     else:
         op = None
-    # ---------------- change start --------------
+
     lba = property_dict.get(gvar.gmenu_lba)  # try to get its LBA
     if lba is not None:
         if event == 'block_bio_remap':
@@ -381,8 +384,10 @@ def add_to_event_property_tree(property_dict):
                     pid = adjust_pid
 
     match_dict = figure_out_e2e_match_dict(event)
-    ''' match_dict: {e2e index in the gE2E_durations_trace: 0/1}
-    0--the first event, 1--the second event.'''
+    ''' 
+    match_dict: {e2e index in the gE2E_durations_trace: 0/1}
+    0--the first event, 1--the second event.
+    '''
     if match_dict:
         '''
         if (lba is not None) and
@@ -441,37 +446,42 @@ def e2e_duration_calculator():
                     seqs = sorted(sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name].keys())
                     for i in seqs:
                         e2e_interval_calculator(pid, op, chunk,  e2e_name,i)
-    return
 
 
-def e2e_databank_resolver():
+def e2e_databank_splid_group():
 
     for pid in sgE2E_Duration_DataBank.keys():
         for op in sgE2E_Duration_DataBank[pid].keys():
             for chunk in sgE2E_Duration_DataBank[pid][op].keys():
                 for e2e_name in sgE2E_Duration_DataBank[pid][op][chunk].keys():
 
+                    # Figure out which sequence number of this e2e in the gE2E_durations_trace
                     seq = conf.gE2E_durations_trace.index(e2e_name)
 
+                    # Figure out the list of duration associated with this e2e
                     duration_list = \
                         list(sgE2E_Duration_DataBank[pid][op][chunk][e2e_name].values())
 
-                    sgE2E_e2e_distribution_by_pid_dic[(pid, op, chunk, seq, e2e_name)] = duration_list
+                    sgE2E_duration_dist_Per_PID_dic[(pid, op, chunk, seq, e2e_name)] = duration_list
 
-                    if (pid, op, chunk, seq, e2e_name) not in sgE2E_e2e_distribution_by_chunk_dic.keys():
-                        sgE2E_e2e_distribution_by_chunk_dic[(op, chunk, seq, e2e_name)] = duration_list
+                    sgE2E_duration_dist_Per_Chunk_dic.setdefault((op, chunk, seq, e2e_name), []).extend(duration_list)
+                    '''
+                    if (pid, op, chunk, seq, e2e_name) not in sgE2E_duration_dist_Per_Chunk_dic.keys():
+                        sgE2E_duration_dist_Per_Chunk_dic[(op, chunk, seq, e2e_name)] = duration_list
                     else:
-                        sgE2E_e2e_distribution_by_chunk_dic[(op, chunk, seq, e2e_name)].extend(duration_list)
+                        sgE2E_duration_dist_Per_Chunk_dic[(op, chunk, seq, e2e_name)].extend(duration_list)
+                    '''
     return
 
 
 def e2e_histogram_pdf_show_by_pid():
-    src_dict = sgE2E_e2e_distribution_by_pid_dic
+    src_dict = sgE2E_duration_dist_Per_PID_dic
     histogram_threshold = 200
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        hist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_histogram_by_pid-groupbyevnt.pdf")
+        hist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+                            str(gvar.gDefault_graph_window_end_at_item) + "-E2E_histogram_Per_PID-GroupingByEvent.pdf")
     except:
         melib.me_warning("Create hist_pdf file failed.")
         return
@@ -482,12 +492,12 @@ def e2e_histogram_pdf_show_by_pid():
         if ln > histogram_threshold:
             list_data = src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]
 
-            if ln > gvar.gDefault_graph_max_items:
-                x = [i * 1000 for i in list_data[gvar.gDefault_graph_start_from_item:
-                                                 gvar.gDefault_graph_max_items]]
-                normed_x = [i * 1000 for i in list_data[gvar.gDefault_graph_start_from_item:
-                                                        gvar.gDefault_graph_max_items]]
-                ln = gvar.gDefault_graph_max_items
+            if ln > gvar.gDefault_graph_window_end_at_item:
+                x = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
+                                                 gvar.gDefault_graph_window_end_at_item]]
+                normed_x = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
+                                                        gvar.gDefault_graph_window_end_at_item]]
+                ln = gvar.gDefault_graph_window_end_at_item
             else:
                 x = [i * 1000 for i in list_data]
                 normed_x = [i * 1000 for i in list_data]
@@ -525,7 +535,7 @@ def e2e_histogram_pdf_show_by_pid():
 
 def e2e_scattergram_pdf_show_by_pid():
 
-    src_dict = sgE2E_e2e_distribution_by_pid_dic
+    src_dict = sgE2E_duration_dist_Per_PID_dic
     pre_pid = ''
     curr_pid = ''
     pre_len_bytes = 0
@@ -538,7 +548,8 @@ def e2e_scattergram_pdf_show_by_pid():
     label_line = ['r.', 'b.', 'y.', 'g.', 'm.', 'c:', 'r-', 'b-', 'y-', 'g-', 'm--', 'c--']
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
     try:
-        dist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_scattergram_by_pid-groupbyevent.pdf")
+        dist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+                            str(gvar.gDefault_graph_window_end_at_item) + "-E2E_scattergram_Per_PID-GroupingByEvent.pdf")
     except:
         melib.me_warning("Create dist_pdf file failed.")
         return
@@ -576,10 +587,10 @@ def e2e_scattergram_pdf_show_by_pid():
         mean = round(np.mean(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]), 6)
 
         list_data = src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]
-        if ln > gvar.gDefault_graph_max_items:
-            x = range(1, gvar.gDefault_graph_max_items + 1)
-            y = [i * 1000 for i in list_data[gvar.gDefault_graph_start_from_item:
-                                             gvar.gDefault_graph_max_items]]
+        if ln > gvar.gDefault_graph_window_end_at_item:
+            x = range(1, gvar.gDefault_graph_window_end_at_item + 1)
+            y = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
+                                             gvar.gDefault_graph_window_end_at_item]]
         else:
             x = range(1, ln+1)
             y = [i * 1000 for i in list_data]
@@ -615,12 +626,13 @@ def e2e_histogram_pdf_show_by_op_len():
 
     :return:
     """
-    src_dict = sgE2E_e2e_distribution_by_chunk_dic
+    src_dict = sgE2E_duration_dist_Per_Chunk_dic
     histogram_threshold = gvar.gDefault_histogram_threshold
     op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        hist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_histogram_by_op_len.pdf")
+        hist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+                            str(gvar.gDefault_graph_window_end_at_item) + "-E2E_histogram_Per_Chunk_GroupingByEvent.pdf")
     except:
         melib.me_warning("Create sgE2E_histogram_by_op_len file failed.")
         return
@@ -631,12 +643,12 @@ def e2e_histogram_pdf_show_by_op_len():
         if ln > histogram_threshold:
             list_data = src_dict[(op, len_bytes, e2e_seq, e2e_event)]
 
-            if ln > gvar.gDefault_graph_max_items:
-                x = [i * 1000 for i in list_data[gvar.gDefault_graph_start_from_item:
-                                                 gvar.gDefault_graph_max_items]]
-                normed_x = [i * 1000 for i in list_data[gvar.gDefault_graph_start_from_item:
-                                                        gvar.gDefault_graph_max_items]]
-                ln = gvar.gDefault_graph_max_items
+            if ln > gvar.gDefault_graph_window_end_at_item:
+                x = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
+                                                 gvar.gDefault_graph_window_end_at_item]]
+                normed_x = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
+                                                        gvar.gDefault_graph_window_end_at_item]]
+                ln = gvar.gDefault_graph_window_end_at_item
             else:
                 x = [i * 1000 for i in list_data]
                 normed_x = [i * 1000 for i in list_data]
@@ -677,7 +689,7 @@ def e2e_histogram_pdf_show_by_op_len():
 
 def e2e_scattergram_pdf_show_by_op_len():
 
-    src_dict = sgE2E_e2e_distribution_by_chunk_dic
+    src_dict = sgE2E_duration_dist_Per_Chunk_dic
     pre_pid = ''
     curr_pid = ''
     pdf_ok = True
@@ -694,7 +706,8 @@ def e2e_scattergram_pdf_show_by_op_len():
     label_line = ['r.', 'b.', 'y.', 'g.', 'm.', 'c:', 'r-', 'b-', 'y-', 'g-', 'm--', 'c--']
     op_len_seq_event_tuple_list = sorted(src_dict.keys())
     try:
-        dist_pdf = PdfPages(gvar.gOutput_Dir_Default+"sgE2E_scattergram_by_op_len.pdf")
+        dist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+                            str(gvar.gDefault_graph_window_end_at_item) + "-E2E_scattergram_Per_Chunk_GroupingByEvnt.pdf")
     except:
         melib.me_warning("Create sgE2E_scattergram_by_op_len file failed.")
         return
@@ -733,10 +746,10 @@ def e2e_scattergram_pdf_show_by_op_len():
 
         list_data = src_dict[(op, len_bytes, e2e_seq, e2e_event)]
 
-        if ln > gvar.gDefault_graph_max_items:
-            x = range(1, gvar.gDefault_graph_max_items + 1)
-            y = [i * 1000 for i in list_data[gvar.gDefault_graph_start_from_item:
-                                             gvar.gDefault_graph_max_items]]
+        if ln > gvar.gDefault_graph_window_end_at_item:
+            x = range(1, gvar.gDefault_graph_window_end_at_item + 1)
+            y = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
+                                             gvar.gDefault_graph_window_end_at_item]]
         else:
             x = range(1, ln+1)
             y = [i * 1000 for i in list_data]
@@ -769,7 +782,7 @@ def e2e_scattergram_pdf_show_by_op_len():
 
 def e2e_stat_analyzer_by_pid():
 
-    src_dict = sgE2E_e2e_distribution_by_pid_dic
+    src_dict = sgE2E_duration_dist_Per_PID_dic
 
     curr_pid = ''
     pdf_ok = True
@@ -814,7 +827,7 @@ def e2e_stat_analyzer_by_pid():
 
 def e2e_stat_analyzer_by_op_len():
 
-    src_dict = sgE2E_e2e_distribution_by_chunk_dic
+    src_dict = sgE2E_duration_dist_Per_Chunk_dic
     curr_op = ''
     curr_len_bytes = 0
     curr_e2e_seq = 0
@@ -856,10 +869,10 @@ def e2e_stat_analyzer_by_op_len():
 
 def e2e_duration_bar_scatter_pdf_show():
 
-    if not sgE2E_e2e_distribution_by_pid_dic:
+    if not sgE2E_duration_dist_Per_PID_dic:
         return
 
-    src_dict = sgE2E_e2e_distribution_by_pid_dic
+    src_dict = sgE2E_duration_dist_Per_PID_dic
 
     pre_pid = ''
     pre_op = ''
@@ -872,7 +885,7 @@ def e2e_duration_bar_scatter_pdf_show():
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        pdf = PdfPages(gvar.gOutput_Dir_Default+"e2e_duration_bar_scatter_per_pid.pdf")
+        pdf = PdfPages(gvar.gOutput_Dir_Default+"02-e2e_duration_bar_scatter_Per_PID.pdf")
     except:
         melib.me_warning("Create e2e_duration_bar_scatter_per_pid file failed.")
         return
@@ -940,7 +953,7 @@ def e2e_duration_bar_scatter_pdf_show():
 def e2e_event_main():
 
     if sgEvent_Property_DataBank_groupbyevent:
-        melib.me_pprint_dict_file(gvar.gOutput_Dir_Default + "00-sgEvent_Property_DataBank_groupbyevent.log",
+        melib.me_pprint_dict_file(gvar.gOutput_Dir_Default + "00-Event_Property_RawDataBank_GroupingByEvent.log",
                                   sgEvent_Property_DataBank_groupbyevent)
 
         """  Step 1 """
@@ -949,21 +962,21 @@ def e2e_event_main():
 
         if sgE2E_Duration_DataBank:
 
-            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default + "01-sgE2E_Duration_DataBank_groupbyevent.log",
+            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default + "01-E2E_Duration_Per_Event_DataBank_GroupingByEvent.log",
                                       sgE2E_Duration_DataBank)
             #melib.me_pprint_dict_scream(sgE2E_Duration_DataBank)
             #melib.me_pickle_save_obj("./01-pickle-sgE2E_Duration_DataBank.log",
             #                         sgE2E_Duration_DataBank)
 
             """ Step 2 """
-            print("Step 2: databank resolving ......")
-            e2e_databank_resolver()  # to resolve the databank and fill in several key dictionaries.
+            print("Step 2: raw data bank split and then group ......")
+            e2e_databank_splid_group()  # split the data bank and fill in respective key dictionaries.
 
-            if sgE2E_e2e_distribution_by_pid_dic:  # analyze and generate the result file by pid
-                #melib.me_pprint_dict_scream(sgE2E_e2e_distribution_by_pid_dic)
+            if sgE2E_duration_dist_Per_PID_dic:  # analyze and generate the result file by pid
+                #melib.me_pprint_dict_scream(sgE2E_duration_dist_Per_PID_dic)
                 melib.me_pprint_dict_file(gvar.gOutput_Dir_Default +
-                                           "./02-sgE2E_e2e_distribution_by_pid_dic-groupbyevent.log",
-                                           sgE2E_e2e_distribution_by_pid_dic)
+                                           "./02-E2E_dist-Per_PID_GroupingByEvent.log",
+                                           sgE2E_duration_dist_Per_PID_dic)
 
                 """ Step 3 """
                 print("Step 3-1: analyzing I/O status by pid ......")
@@ -975,10 +988,10 @@ def e2e_event_main():
                 print("Step 3-3: outputting histogram pdf by pid ......")
                 e2e_histogram_pdf_show_by_pid()
 
-            if sgE2E_e2e_distribution_by_chunk_dic:  # analyze and generate the result file by op+len
+            if sgE2E_duration_dist_Per_Chunk_dic:  # analyze and generate the result file by op+len
                 melib.me_pprint_dict_file(gvar.gOutput_Dir_Default +
-                                          "./02-sgE2E_e2e_distribution_by_chunk_dic-groupbyevent.log",
-                                          sgE2E_e2e_distribution_by_chunk_dic)
+                                          "./02-E2E_duration_dist_Per_Chunk_GroupingByEvent.log",
+                                          sgE2E_duration_dist_Per_Chunk_dic)
 
                 """ Step 4 """
                 print("Step 4-1: analyzing I/O status by op_len ......")

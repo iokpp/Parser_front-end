@@ -20,7 +20,7 @@ At the initial version, this tool is purely developed by python and mainly based
 on the ftrace log.
 About ftrace (https://elinux.org/Ftrace).
 
-============
+
 Dependencies
 ============
 
@@ -29,7 +29,7 @@ Dependencies
  * matplotlib
 
 
-============
+
 Usage
 ============
  eg: ftparser -i ftrace_output_file.log --e2e
@@ -54,7 +54,7 @@ Usage
         eg:
             ftparser -f ./ftrace.log --wa
 
-============
+
 TODO list
 ============
  * Add SCSI protocol analyzer
@@ -62,13 +62,12 @@ TODO list
     - 2. accessing chunk size distribution
     - 3. LBA
 
-============
+
 FIXME list
 ============
  * Fix the condition that there are some requests missing event points
 
 
-============
 Developers
 ============
  Bean Huo beanhuo@micron.com

@@ -131,8 +131,6 @@ gE2E_trace_points_in_one_request = [
                  # ----------VFS----------
                  gvar.gReqEvent_end,
                  # ----------block--------
-                 'block_rq_issue',
-                 'block_rq_complete',
                  # ---------SCSI---------
                  'scsi_dispatch_cmd_start',
                  'scsi_dispatch_cmd_done',

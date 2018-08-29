@@ -221,7 +221,9 @@ def usage():
                     Specify from which index the histogram/bar/distribution
                     chart stop to show on output file.
                     
-        --wa        Analyze the system level WA (write amplification)                        
+        --wa <pid|task>
+                    Analyze the system level WA (write amplification)
+                                      
         --protocol [<scsi|nvme>]
                     SCSI and NVMe protocol analyzer.
     Eg:
@@ -230,7 +232,7 @@ def usage():
         2. Parse the log and show its record frm index 1 to 100
         ftparser -i ftrace.log  --e2e event --start 1 --end 100 --out ./out
         3. Calculate the WA in the log
-        ftparser -i ftrace.log  --wa
+        ftparser -i ftrace.log  --wa task
         
     """ % os.path.basename(sys.argv[0]))
     sys.exit(1)
@@ -243,7 +245,7 @@ def me_dbg(msg):
 
 
 def me_warning(msg):
-    print("Warning! "+msg)
+    #print("Warning! "+msg)
     if LogFD:
         print >> LogFD, "Warning! "+msg
 

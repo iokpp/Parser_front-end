@@ -47,7 +47,7 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '-h-i:-v-d-k',
                                    ['split', 'keep', 'debug', 'help', 'version', 'input=',
-                                    'e2e=', 'out=', 'pending', 'wa', 'start=', 'end='])
+                                    'e2e=', 'out=', 'pending', 'wa=', 'start=', 'end='])
     except getopt.GetoptError:
             melib.usage()
             sys.exit(2)
@@ -82,16 +82,16 @@ def main():
         if opt_name in ('--start', 'start'):
             start_index = opt_value
             if str.isdigit(start_index):
-                gvar.gDefault_graph_start_from_item = int(start_index)
-                print("Change start index from %d." % gvar.gDefault_graph_start_from_item)
+                gvar.gDefault_graph_window_start_from_item = int(start_index)
+                print("Change start index from %d." % gvar.gDefault_graph_window_start_from_item)
             else:
                 print("Error: The specified start index is not an valid integer.")
                 exit(1)
-        if opt_name in ('--end', 'end'):
+        if opt_name in ('end', '--end'):
             end_index = opt_value
             if str.isdigit(end_index):
-                gvar.gDefault_graph_max_items = int(end_index)
-                print("Change index end at %d." % gvar.gDefault_graph_max_items)
+                gvar.gDefault_graph_window_end_at_item = int(end_index)
+                print("Change index end at %d." % gvar.gDefault_graph_window_end_at_item)
             else:
                 print("Error: The specified end index is not an valid integer.")
                 exit(1)
@@ -101,12 +101,21 @@ def main():
             gvar.gRunning_pending_mode = True
         if opt_name in ('--wa', 'wa'):
             is_wa = True
-    """ mkdir the output folder """
+            wa_mode = opt_value
+            if wa_mode == gvar.gWA_RA_mode_by_pid or \
+                    wa_mode == gvar.gWA_RA_mode_by_task:
+                print("WA/RA mode is %s." % wa_mode)
+                gvar.gWA_RA_mode = wa_mode
+            else:
+                print("WA/RA will use default mode %s." % gvar.gWA_RA_mode)
+
+    if gvar.gDefault_graph_window_end_at_item < gvar.gDefault_graph_window_start_from_item:
+        print("Error: The specified start index is bigger than end index.")
+        exit(1)
 
     if not gFileIn:
         print("No input log specified. See help. (Use -h)")
         sys.exit(1)
-
     else:
         """ open the log file """
         try:
@@ -115,6 +124,7 @@ def main():
             print("Problem opening file: %s" % gFileIn)
             sys.exit(1)
 
+    """ mkdir the output folder """
     melib.mkdir(gvar.gOutput_Dir_Default)
     """ open the warning log file """
     try:
@@ -122,8 +132,6 @@ def main():
     except:
         print("Open/Create Warning.log failed.")
         melib.LogFD = 0
-
-
 
     if is_split:
         gPIDs_Files_dic = split.split_file_by_pid(lines)

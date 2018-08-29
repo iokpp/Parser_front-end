@@ -125,13 +125,14 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa):
     gvar.gCurr_line = 0
 
     for line_str in original_file_lines:
-        ''' take one line from log '''
+        # take one line from log
         gvar.gCurr_line += 1
         func_dict = parsing_one_line(line_str)
         if func_dict:
-            ''' Parsing success'''
+            # Parsing success
             if is_e2e:
                 if gvar.gE2E_mode == gvar.gE2E_mode_group_by_request:
+                    # Add this parsed result into e2e_req module data bank
                     try:
                         e2e_req.add_to_event_property_tree(func_dict)
                     except melib.DefinedExcepton as e:
@@ -139,13 +140,13 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa):
                         melib.me_warning(func_dict)
                         melib.me_warning(e)
                 elif gvar.gE2E_mode == gvar.gE2E_mode_group_by_event:
+                    # Add this parsed result into e2e_event module data bank
                     try:
                         e2e_event.add_to_event_property_tree(func_dict)
                     except melib.DefinedExcepton as e:
                         melib.me_warning("Add item error!")
                         melib.me_warning(func_dict)
                         melib.me_warning(e)
-
             if is_wa:
                 try:
                     wa.add_to_wa_property_tree(func_dict)
