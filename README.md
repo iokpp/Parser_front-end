@@ -1,4 +1,4 @@
-IOKPP front-end (I/O key performance parameter ) or Ftparser (ftrace parser)
+IOKPP (I/O key performance parameter ) front-end tool
 ============
 Free use of this software is granted under the terms of the GNU Public License (GPL).
 
