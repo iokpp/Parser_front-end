@@ -17,7 +17,7 @@ export ENABLE=1
 export DISABLE=0
 export TraceFs="/sys/kernel/debug/tracing"
 export DEBUG=$ENABLE
-export LogFile="./trace.dat"
+export LogFile="./IOkpp.dat"
 
 
 function print() {
