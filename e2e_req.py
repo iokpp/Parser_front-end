@@ -549,24 +549,25 @@ def add_to_event_property_tree(property_dict):
 
 
 def add_one_duration(pid, op, len_bytes, req_seq, pre_event_dict, curr_event_dict, E2E_seq):
-        pre_event = list(pre_event_dict)[0]
-        curr_event = list(curr_event_dict)[0]
+        pre_event = list(pre_event_dict.keys())[0]
+        curr_event = list(curr_event_dict.keys())[0]
         pre_time = pre_event_dict[pre_event][gvar.gmenu_time]
         curr_time = curr_event_dict[curr_event][gvar.gmenu_time]
 
         dur = round(float(curr_time) - float(pre_time), 6)
         e2e = pre_event + '-' + curr_event
-
-        if E2E_seq != 0:
-            if e2e == gvar.gReqEvent_start + '-' + gvar.gReqEvent_end:
-                # E2E_seq 0 will calculate the total duration.
-                return
-            for i in range(0, E2E_seq):
-                if sgE2E_Duration_per_request_DataBank[pid][op][len_bytes][req_seq][i].has_key(e2e):
-                    melib.me_warning("E2E_Duration_per_request_DataBank at [%s][%s][%d][%d][%d] already exists %s." %
-                                     (pid, op, len_bytes, req_seq, i, e2e))
+        if conf.gE2E_filter_in_one_request and e2e in conf.gE2E_filter_in_one_request:
+            # only add the e2e that is  in the conf.gE2E_filter_in_one_request
+            if E2E_seq != 0:
+                if e2e == gvar.gReqEvent_start + '-' + gvar.gReqEvent_end:
+                    # E2E_seq 0 will be for the total duration.
                     return
-        sgE2E_Duration_per_request_DataBank[pid][op][len_bytes][req_seq][E2E_seq][e2e] = dur
+                for i in range(1, E2E_seq):
+                    if sgE2E_Duration_per_request_DataBank[pid][op][len_bytes][req_seq][i].has_key(e2e):
+                        melib.me_warning("E2E_Duration_per_request_DataBank at [%s][%s][%d][%d][%d] already exists %s." %
+                                         (pid, op, len_bytes, req_seq, i, e2e))
+                        return
+            sgE2E_Duration_per_request_DataBank[pid][op][len_bytes][req_seq][E2E_seq][e2e] = dur
 
 
 def interval_calculating(pid, op, len_bytes, req_seq):
@@ -577,23 +578,26 @@ def interval_calculating(pid, op, len_bytes, req_seq):
     req_seq_list = sorted(one_req_dict.keys())
 
     for i in req_seq_list:
-        event = list(one_req_dict[i])[0]
+        event = list(one_req_dict[i].keys())[0]
         if event in conf.gE2E_trace_points_in_one_request:
-            duration_seq += 1
-            if pre_event == {}:
-                pre_event = one_req_dict[1]
+            if i == 1 and event == gvar.gReqEvent_start:
+                pre_event = one_req_dict[1]  # first event starts from number 1
+            elif pre_event is not {}:
                 curr_event = one_req_dict[i]
+                duration_seq += 1
                 add_one_duration(pid, op, len_bytes, req_seq, pre_event, curr_event, duration_seq)
                 pre_event = curr_event
+            '''
             else:
                 curr_event = one_req_dict[i]
+                duration_seq += 1
                 add_one_duration(pid, op, len_bytes, req_seq, pre_event, curr_event, duration_seq)
                 pre_event = curr_event
-        if event == gvar.gReqEvent_end:  # calculate total duration
-            #duration_seq += 1
-            curr_event = one_req_dict[i]
-            if list(one_req_dict[1])[0] == gvar.gReqEvent_start:
-                add_one_duration(pid, op, len_bytes, req_seq, one_req_dict[1], curr_event, 0)
+            '''
+            if event is gvar.gReqEvent_end:  # calculate total duration
+                curr_event = one_req_dict[i]
+                if list(one_req_dict[1].keys())[0] is gvar.gReqEvent_start:
+                    add_one_duration(pid, op, len_bytes, req_seq, one_req_dict[1], curr_event, 0)
 
     return
 
@@ -610,7 +614,7 @@ def e2e_duration_calculator():
             for len_bytes in sgEvent_Property_DataBank_groupbyrequest[pid][op].keys():
                 seqs = sorted(sgEvent_Property_DataBank_groupbyrequest[pid][op][len_bytes].keys())
                 for i in seqs:
-                    interval_calculating(pid, op, len_bytes, i)
+                    interval_calculating(pid, op, len_bytes, i)  # calculate one request
     return
 
 
@@ -625,7 +629,6 @@ def e2e_databank_split_group(option):
                 for req_seq in sgE2E_Duration_per_request_DataBank[pid][op][len_bytes].keys():
                     curr_total = curr_hw_cost = 0
                     for e2e_seq in sgE2E_Duration_per_request_DataBank[pid][op][len_bytes][req_seq].keys():
-
                         e2e_event =\
                             list(sgE2E_Duration_per_request_DataBank[pid][op][len_bytes][req_seq][e2e_seq])[0]
                         e2e_duration =\
@@ -637,49 +640,17 @@ def e2e_databank_split_group(option):
                             curr_hw_cost = e2e_duration
 
                         if curr_total and curr_hw_cost:
+                            # Only when this is a complete I/O request, then calculate its HW and SW duration.
                             sgE2E_hw_distribution_dict.setdefault((op, len_bytes), []).append(curr_hw_cost)
-
-                            '''
-                            if not sgE2E_hw_distribution_dict:
-                                sgE2E_hw_distribution_dict[(op, len_bytes)] = [curr_hw_cost]
-                            elif (op, len_bytes) not in sgE2E_hw_distribution_dict.keys():
-                                sgE2E_hw_distribution_dict[(op, len_bytes)] = [curr_hw_cost]
-                            elif (op, len_bytes) in sgE2E_hw_distribution_dict.keys():
-                                sgE2E_hw_distribution_dict[(op, len_bytes)].append(curr_hw_cost)
-                            '''
                             software_cost = curr_total - curr_hw_cost
                             sgE2E_sw_distribution_dict.setdefault((op, len_bytes), []).append(software_cost)
-                            '''
-                            if not sgE2E_sw_distribution_dict:
-                                sgE2E_sw_distribution_dict[(op, len_bytes)] = [software_cost]
-                            elif (op, len_bytes) not in sgE2E_sw_distribution_dict.keys():
-                                sgE2E_sw_distribution_dict[(op, len_bytes)] = [software_cost]
-                            elif (op, len_bytes) in sgE2E_sw_distribution_dict.keys():
-                                sgE2E_sw_distribution_dict[(op, len_bytes)].append(software_cost)
-                            '''
                             curr_hw_cost = curr_total = 0
 
                         sgE2E_duration_distribution_Per_PID_dic.setdefault((pid, op, len_bytes, e2e_seq, e2e_event),
                                                                     []).append(e2e_duration)
-                        ''''
-                        if not sgE2E_duration_distribution_Per_PID_dic:
-                            sgE2E_duration_distribution_Per_PID_dic[(pid, op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (pid, op, len_bytes, e2e_seq, e2e_event) not in sgE2E_duration_distribution_Per_PID_dic.keys():
-                            sgE2E_duration_distribution_Per_PID_dic[(pid, op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (pid, op, len_bytes, e2e_seq, e2e_event) in sgE2E_duration_distribution_Per_PID_dic.keys():
-                            sgE2E_duration_distribution_Per_PID_dic[(pid, op, len_bytes, e2e_seq, e2e_event)].append(e2e_duration)
-                        '''
+
                         sgE2E_duratinon_distribution_Per_Chunk_dic.setdefault((op, len_bytes, e2e_seq, e2e_event),
                                                                      []).append(e2e_duration)
-                        '''
-                        if not sgE2E_duratinon_distribution_Per_Chunk_dic:
-                            sgE2E_duratinon_distribution_Per_Chunk_dic[(op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (op, len_bytes, e2e_seq, e2e_event) not in sgE2E_duratinon_distribution_Per_Chunk_dic.keys():
-                            sgE2E_duratinon_distribution_Per_Chunk_dic[(op, len_bytes, e2e_seq, e2e_event)] = [e2e_duration]
-                        elif (op, len_bytes, e2e_seq, e2e_event) in sgE2E_duratinon_distribution_Per_Chunk_dic.keys():
-                            sgE2E_duratinon_distribution_Per_Chunk_dic[(op, len_bytes, e2e_seq, e2e_event)].append(e2e_duration)
-                        '''
-
     return
 
 
@@ -1079,7 +1050,7 @@ def e2e_stat_analyzer_by_op_len():
     fd.close()
 
 
-def software_hardware_duration_division():
+def HW_SW_division_PieChart_pdf_show():
 
     if not sgE2E_sw_distribution_dict:
         return
@@ -1095,7 +1066,7 @@ def software_hardware_duration_division():
     
     try:
         pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
-                       str(gvar.gDefault_graph_window_end_at_item)+"-E2E_hw_sf_division.pdf")
+                       str(gvar.gDefault_graph_window_end_at_item)+"-E2E_HW-SW_division_PieChart.pdf")
     except:
         melib.me_warning("Create sgE2E_hw_sf_division file failed.")
         return
@@ -1111,7 +1082,7 @@ def software_hardware_duration_division():
             hw_list_data = hw_dict[(op, length)][gvar.gDefault_graph_window_start_from_item:gvar.gDefault_graph_window_end_at_item]
             sw_list_data = sw_dict[(op, length)][gvar.gDefault_graph_window_start_from_item:gvar.gDefault_graph_window_end_at_item]
 
-            hw_y = [i * 1000 for i in hw_list_data]
+            hw_y = [i * 1000 for i in hw_list_data]  # convert us to ms
             sw_y = [i * 1000 for i in sw_list_data]
             x = np.arange(len(hw_list_data)) + 1
 
@@ -1126,8 +1097,23 @@ def software_hardware_duration_division():
             plt.legend(fontsize=10, loc='best')
             pdf.savefig()
             plt.close()
+
+            hw_mean = round(np.mean(hw_dict[(op, length)]), 6)
+            hw_mean = hw_mean * 1000000  # convert to integer
+            sw_mean = round(np.mean(sw_dict[(op, length)]), 6)
+            sw_mean = sw_mean * 1000000  # convert to integer
+            pie_x = [hw_mean, sw_mean]
+            pie_lables = ['HW', 'SW']
+            colors = ['green', 'red']
+            plt.figure()
+            plt.pie(pie_x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, colors=colors)
+            plt.title(title)
+            plt.axis('equal')
+            plt.legend(fontsize=10, loc='best', labels=pie_lables)
+            pdf.savefig()
+            plt.close()
     """
-    Step 2: percentage pie char of each layer duration 
+    Step 2: percentage pie chart of each layer duration 
     """
     curr_op = 'none'
     curr_len_bytes = 0
@@ -1141,10 +1127,10 @@ def software_hardware_duration_division():
                 if items > 1:
                     x = [i * 1000000 for i in quants]
                     plt.figure()
-                    plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True)
+                    plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, startangle=90)
                     plt.title(curr_op + '/' + str(curr_len_bytes))
                     plt.axis('equal')
-                    plt.legend(fontsize=10, loc='best', labels=labels)
+                    plt.legend(fontsize=5, labels=labels)
                     pdf.savefig()
                     plt.close()
                 quants = []
@@ -1202,8 +1188,8 @@ def e2e_main():
             #                         sgE2E_Duration_per_request_DataBank)
 
             """ Step 2 """
-            print("Step 2: split the raw databank, then group ......")
-            e2e_databank_split_group('default')  # to resolve the databank and to fill in several key dictionaries.
+            print("Step 2: split the raw data bank, then group ......")
+            e2e_databank_split_group('default')  # to resolve the data bank and to fill in several key dictionaries.
 
             if sgE2E_duration_distribution_Per_PID_dic:  # analyze and generate the result file divided by pid
                 #melib.me_pprint_dict_scream(sgE2E_duration_distribution_Per_PID_dic)
@@ -1229,7 +1215,7 @@ def e2e_main():
                 e2e_histogram_pdf_show_by_op_len()
         """ Step 5 """
         print("Step 5: SW and HW duration division ....")
-        software_hardware_duration_division()
+        HW_SW_division_PieChart_pdf_show()
 
     else:
         melib.me_warning("sgEvent_Property_DataBank_groupbyrequest is empty.")

@@ -2,10 +2,16 @@ IOKPP front-end (I/O key performance parameter ) or Ftparser (ftrace parser)
 ============
 Free use of this software is granted under the terms of the GNU Public License (GPL).
 
-This tool is a front-end part of IOKPP, used to analyze/parse the trace log of IOKPP back-end tool,
-and provide the I/O performance related parameters. The back-end of IOKPP runs on the target machine
-side, which is used to trigger Linux I/O request event  and collect trace event log, and the front-end
-tool run on the user end PC.
+IOkpp(IO key performance parameter) is a storage subsystem timing analysis tool,
+it provides a non-invasive method to collect timing data on the Linux storage
+subsystem from user space on path to the storage device. It consists of front-end
+tool (parser) and back-end tool.
+This tool is a front-end part,which runs on the target platform, and is used to
+analyze/parse the log of IOKPP back-end tool, and provide the I/O performance
+timing statistics. 
+The back-end of IOKPP runs on the target machine side, which is used to install/enable
+trace event, trigger Linux I/O request event and collect trace event log.
+
 
 The key functions include:
 
@@ -16,10 +22,7 @@ The key functions include:
 5. Multiple I/O requests distribution on the storage device
 6. Time costs distribution on specified events
 
-At the initial version, this tool is purely developed by python and mainly based
-on the ftrace log.
-About ftrace (https://elinux.org/Ftrace).
-
+At the initial version, this front-end tool is purely developed by python.
 
 Dependencies
 ============
@@ -32,27 +35,49 @@ Dependencies
 
 Usage
 ============
- eg: ftparser -i ftrace_output_file.log --e2e
+    This program is to parse the log which came from ftrace or IOKPP back-end tool.
+    Before using this tool, make sure your log contains these key items:
+    [ TASK-PID   CPU#  TIMESTAMP  FUNCTION ].
 
-    This program parses the output from the linux function trace (ftrace)
     Options:
-        -d, --debug Print more information for debugging, this will be very noisy.
-        -k, --keep  Don't delete the files created
-        -h, --help  Show this usage help.
-        -V/v, --version   Show version information.
-        --out <output file folder>  specify the output directory
-        -i <file>   Specify the ftrace log, you can use trace-c.sh and
-                    trace-cmd easily to get this log.
-        --split     Split original trace log into several file by PID
-                      eg: ftparser -f ftrace.log --split
-        --e2e       Print out IO performance key parameters based on the
-                    input file from ftrace.
-        --wa        Analyze the system level WA (write amplification)
-        --protocol [<scsi|nvme>]
-                        protocol analyzer.
+        -d/--debug  Print more information for debugging, this will be very noisy.
+        -h/--help   Show this usage help.
+        -V/v        Show version.
+        --out <output file folder>
+                    Specify the output directory
 
-        eg:
-            ftparser -f ./ftrace.log --wa
+        -i <file>   Specify the input fil
+        --split     Split original trace log into several file by PID
+        --e2e <group mode>
+                    Print out IO performance key parameters based on the
+                    specified input log file.
+                    There are two kinds of group mode, "event" and "request".
+
+               --e2e request: The all events associated with one I/O request, will
+                               be grouped together, then calculate each stage time
+                               consumption.
+               --e2e event:    This will just group the same e2e (from event A to
+                               event B) together, and then calculate its time consumption.
+        --start <start index>
+                    Specify from which index the histogram/bar/distribution
+                    chart start to show on output file.
+
+        --end <end index>
+                    Specify from which index the histogram/bar/distribution
+                    chart stop to show on output file.
+
+        --wa <pid|task>
+                    Analyze the system level WA (write amplification)
+
+        --protocol [<scsi|nvme>]
+                    SCSI and NVMe protocol analyzer.
+    Eg:
+        1. Split the log into several file according to PID.
+       	IOparser -i ftrace.log  --split
+        2. Parse the log and show its record frm index 1 to 100
+        IOparser -i ftrace.log  --e2e event --start 1 --end 100 --out ./out
+        3. Calculate the WA in the log
+        IOparser -i ftrace.log  --wa task
 
 
 TODO list
@@ -65,7 +90,7 @@ TODO list
 
 FIXME list
 ============
- * Fix the condition that there are some requests missing event points
+ * None
 
 
 Developers

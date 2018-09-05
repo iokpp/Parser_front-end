@@ -100,6 +100,9 @@ gE2E_events_funcs_filter_dict = {
 }
 
 
+#
+#
+#
 # User configure lists start
 """
 gIO_stack_track_events_list = [
@@ -128,12 +131,20 @@ gIO_stack_track_events_list = [
 """
 
 gE2E_trace_points_in_one_request = [
-                 # ----------VFS----------
-                 gvar.gReqEvent_end,
-                 # ----------block--------
-                 # ---------SCSI---------
-                 'scsi_dispatch_cmd_start',
-                 'scsi_dispatch_cmd_done',
+    # ----------VFS----------
+    gvar.gReqEvent_start,
+    gvar.gReqEvent_end,
+    # ----------block--------
+    # ---------SCSI---------
+    'scsi_dispatch_cmd_start',
+    'scsi_dispatch_cmd_done'
+]
+
+gE2E_filter_in_one_request = [
+    gvar.gReqEvent_start + '-' + gvar.gReqEvent_end,
+    gvar.gReqEvent_start + '-' + 'scsi_dispatch_cmd_start',
+    'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done',
+    'scsi_dispatch_cmd_done-' + gvar.gReqEvent_end
 ]
 
 gE2E_durations_trace = [
@@ -149,7 +160,6 @@ gE2E_durations_trace = [
 gE2E_HW_transfer_duration_define = (
                 'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done'
 )
-
 
 gWA_HW_transfer_completion_flags = [
                 'scsi_dispatch_cmd_done'

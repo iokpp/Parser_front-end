@@ -208,7 +208,7 @@ def usage():
                     specified input log file.
                     There are two kinds of group mode, "event" and "request".
                
-               --e2e request : The all events associated with one I/O request, will
+               --e2e request: The all events associated with one I/O request, will
                                be grouped together, then calculate each stage time
                                consumption.
                --e2e event:    This will just group the same e2e (from event A to

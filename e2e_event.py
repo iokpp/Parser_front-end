@@ -27,6 +27,8 @@ from block import block
 from scsi import scsi
 
 line_no = 0  # the line number which is now analyzed on.
+sgSubtrahend = 0
+sgMinuend = 1
 
 SCSI_BLOCK_SIZE_BYTE = gvar.gSCSI_LogicalBlockSize_Bytes
 SECTOR_SIZE_BYTE = gvar.gLogicalSectorSize_Bytes
@@ -35,7 +37,7 @@ SECTOR_SIZE_BYTE = gvar.gLogicalSectorSize_Bytes
 The PID list, contains all the PID numbers that appear in
 the log file. such as: ['pid a', 'pid b', ...]
 '''
-sgPID_list = []
+#sgPID_list = []
 
 
 '''
@@ -233,13 +235,15 @@ def add_subtrahend_to_db(event_info_dict, e2e_name, record_index):
     lba = event_info_dict[gvar.gmenu_lba]
     lines = gvar.gCurr_line
 
-    if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index].get(0) is not None:
+    if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index].get(0):
         melib.me_warning("Failed to add subtrahend, Line %d, since %s already exists in data bank. e2e %s,"
                          "recode index %s." % (lines, event, e2e_name, record_index))
+        melib.me_warning("Line %d, timestamp %s, index %d is %s." % (lines, timestamp, record_index,
+                        sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index].get(0)))
     else:
         sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index][0][gvar.gmenu_time] = timestamp
         sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][record_index][0][gvar.gmenu_lba] = lba
-
+    # Save the record index of (pid, op, chunk, e2e_name, lba)
     sgIndex_of_LBA_in_DB[(pid, op, chunk, e2e_name, lba)] = record_index
 
 
@@ -264,56 +268,67 @@ def add_minuend_to_db(event_info_dict, e2e_name, item_seq):
 
 def add_new_branch_into_tree(event_info_dict, e2e_match_dict):
 
+    global sgItems_counter_per_E2E
     pid = event_info_dict[gvar.gmenu_PID]
     op = event_info_dict[gvar.gmenu_op]
     chunk = event_info_dict[gvar.gmenu_len]
 
-    sgPID_list.append(pid)  # add this pid into pid list
-
     for i in e2e_match_dict.keys():
-        # This is the first req associated with PID/op/e2e/chunk
+        # This is the first req associated with PID/op/chunk/e2e
         e2e_name = conf.gE2E_durations_trace[i]  # get the e2e name by its index
-        item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name] = 1 # this is the first item of e2e recode.
         seq = e2e_match_dict[i]  # get its event index, 0/1
-        if seq == 0:
-            # here only adds first event, because so far it doesn't exist other event in this pid recode.
+        if seq == sgSubtrahend:
+            item_seq = sgItems_counter_per_E2E[pid][op][chunk][e2e_name] = 1  # this is the first item of e2e recode.
+            # Here only adds first event
             add_subtrahend_to_db(event_info_dict, e2e_name, item_seq)
-        #elif seq == 1:
-        #   add_minuend_to_db(event_info_dict, e2e_name, item_seq)
 
 
 def add_new_event_into_tree(property_dict, match_dict):
+    global sgItems_counter_per_E2E
+
     pid = property_dict[gvar.gmenu_PID]
     chunk = property_dict[gvar.gmenu_len]
     op = property_dict[gvar.gmenu_op]
     lba = property_dict[gvar.gmenu_lba]
-
     for e2e_seq in match_dict.keys():
         e2e_name = conf.gE2E_durations_trace[e2e_seq]
-        if chunk not in sgEvent_Property_DataBank_groupbyevent[pid][op].keys():
-            add_new_branch_into_tree(property_dict, match_dict)
-        elif e2e_name not in sgEvent_Property_DataBank_groupbyevent[pid][op][chunk].keys():
-            add_new_branch_into_tree(property_dict, match_dict)
-        else:
-            subtra_or_minuend = match_dict[e2e_seq]
-            if subtra_or_minuend == 0:
-                sgItems_counter_per_E2E[pid][op][chunk][e2e_name] += 1
-                record_index = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]
+        subtra_or_minuend = match_dict[e2e_seq]
+        if (chunk not in sgEvent_Property_DataBank_groupbyevent[pid][op].keys()) or\
+                (e2e_name not in sgEvent_Property_DataBank_groupbyevent[pid][op][chunk].keys()):
+            # the chunk or e2e has not added into data bank yet.
+            if subtra_or_minuend == sgSubtrahend:
+                record_index = sgItems_counter_per_E2E[pid][op][chunk][e2e_name] = 1  # this is the first item of e2e.
+                # Here only adds first event
                 add_subtrahend_to_db(property_dict, e2e_name, record_index)
-            elif subtra_or_minuend == 1:
+        else:
+            # The data bank already has this e2e associated with specified pid/op/chunk,
+            # now just add new record into its relevant location.
+            if subtra_or_minuend == sgSubtrahend:
+                record_index = sgItems_counter_per_E2E[pid][op][chunk][e2e_name]
+                record_index = record_index + 1
+                sgItems_counter_per_E2E[pid][op][chunk][e2e_name] = record_index
+                add_subtrahend_to_db(property_dict, e2e_name, record_index)
+            elif subtra_or_minuend == sgMinuend:
+                # This is a minuend
                 record_index = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, lba))
                 if record_index is not None:
                     add_minuend_to_db(property_dict, e2e_name, record_index)
                 else:
+                    # There is one possible e2e case, in which there is one
+                    # kind of event without LBA. As for this kind of condition,
+                    # we will search for its relevant subtrahend in whole data bank.
                     found_count = 0
                     first_found_record_index = None
                     last_found_record_index = None
 
                     if lba is None:
+                        # If this event doesn't have LBA parameter, searched for record index
+                        # according to already saved LBA.
                         for lba_temp in sgLBA_list_of_PID_OP_chunk[(pid, op, chunk)]:
                             found_index = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, lba_temp))
                             if found_index is not None:
-                                if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][found_index].get(1) is None:
+                                if sgEvent_Property_DataBank_groupbyevent[pid][op][chunk][e2e_name][found_index].get(1)\
+                                        is None:
                                     if found_count == 0:
                                         first_found_record_index = found_index
                                     last_found_record_index = found_index
@@ -322,14 +337,14 @@ def add_new_event_into_tree(property_dict, match_dict):
                         if found_count > 1:
                             melib.me_warning("Line %d, there are  %d relevant subtrahend items found for e2e %s."
                                            % (gvar.gCurr_line, found_count, e2e_name))
-
                     elif lba is not None:
                         first_found_record_index = sgIndex_of_LBA_in_DB.get((pid, op, chunk, e2e_name, None))
 
-                    record_index = first_found_record_index  # use the first one we found FIXME
+                    record_index = first_found_record_index  # Use the first one we found FIXME
 
                     if record_index is None:
-                        melib.me_error("Line %d cannot find its relevant subtrahend item for e2e %s." %
+                        melib.me_warning("Line %d cannot find its relevant subtrahend item for e2e %s, please"
+                                         " check your log if integrity." %
                                        (gvar.gCurr_line, e2e_name))
                     else:
                         add_minuend_to_db(property_dict, e2e_name, record_index)
@@ -399,7 +414,7 @@ def add_to_event_property_tree(property_dict):
         if pid not in sgEvent_Property_DataBank_groupbyevent.keys():
             ''' This PID first time appears, create a new pid branch. '''
             add_new_branch_into_tree(property_dict, match_dict)
-        elif pid in sgEvent_Property_DataBank_groupbyevent.keys():
+        else:
             ''' This PID has been existing in the data bank. '''
             if op not in sgEvent_Property_DataBank_groupbyevent[pid].keys():
                 add_new_branch_into_tree(property_dict, match_dict)
@@ -835,7 +850,7 @@ def e2e_stat_analyzer_by_op_len():
 
     op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
-    fd = open(gvar.gOutput_Dir_Default+"Report_by_op_len.log", 'w')
+    fd = open(gvar.gOutput_Dir_Default+"Report_by_op_len-groupbyevent.log", 'w')
     bak_stdout = sys.stdout
     sys.stdout = fd
     for (op, len_bytes, e2e_seq, e2e_event) in op_len_seq_event_tuple_list:
@@ -885,7 +900,7 @@ def e2e_duration_bar_scatter_pdf_show():
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        pdf = PdfPages(gvar.gOutput_Dir_Default+"02-e2e_duration_bar_scatter_Per_PID.pdf")
+        pdf = PdfPages(gvar.gOutput_Dir_Default+"e2e_duration_BarChart_scatter_Per_PID.pdf")
     except:
         melib.me_warning("Create e2e_duration_bar_scatter_per_pid file failed.")
         return
@@ -904,11 +919,11 @@ def e2e_duration_bar_scatter_pdf_show():
                     x_pos = np.arange(len(e2e_list))
                     plt.figure()
                     plt.bar(x_pos, e2e_duration_list, 0.35, align='center', alpha=0.5, color="green", yerr=0.000001)
-                    plt.xticks(x_pos-0.5, e2e_list, fontsize=5, rotation=10)
+                    plt.xticks(x_pos, e2e_list, fontsize=5, rotation=10)
                     plt.ylabel('ms')
                     plt.title(title)
                     for a, b in zip(x_pos, e2e_duration_list):
-                        plt.text(a, b+0.001, '%.3fms\n%d items' % (b, e2e_record_quantities_dict[b]),
+                        plt.text(a, b+0.000001, '%.3fms\n%d items' % (b, e2e_record_quantities_dict[b]),
                                  ha='center', va='bottom', fontsize=5, color='red')
                     pdf.savefig()
                 else:
@@ -936,11 +951,11 @@ def e2e_duration_bar_scatter_pdf_show():
             x_pos = np.arange(len(e2e_list))
             plt.figure()
             plt.bar(x_pos, e2e_duration_list, 0.35, align='center', alpha=0.5, color="green", yerr=0.000001)
-            plt.xticks(x_pos-0.5, e2e_list, fontsize=5, rotation=10)
+            plt.xticks(x_pos, e2e_list, fontsize=5, rotation=10)
             plt.ylabel('ms')
             plt.title(title)
             for a, b in zip(x_pos, e2e_duration_list):
-                plt.text(a, b + 0.001, '%.3fms\n%d items' % (b, e2e_record_quantities_dict[b]),
+                plt.text(a, b + 0.000001, '%.3fms\n%d items' % (b, e2e_record_quantities_dict[b]),
                          ha='center', va='bottom', fontsize=5, color='red')
             pdf.savefig()
         else:
