@@ -3,7 +3,7 @@
 export FLAGS
 FLAGS=${FLAGS}" -k"
 FLAGS=${FLAGS}" -p function"
-FLAGS=${FLAGS}" -m 8192"	# default buffer size per CPU
+FLAGS=${FLAGS}" -m 65536"	# default buffer size per CPU
 #VFS
 FLAGS=${FLAGS}" -e sys_enter_write"	#syscall
 FLAGS=${FLAGS}" -e sys_enter_read"	#syscall
