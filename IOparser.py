@@ -21,7 +21,7 @@ import e2e_req
 import wa
 import iokpp
 
-VERSION = "0.0.2-20180701"
+VERSION = "0.0.1-20180801"
 
 gFileIn = None
 gKeep_Files = 0  # used to control if delete the files created
