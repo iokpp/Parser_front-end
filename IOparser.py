@@ -17,11 +17,10 @@ import getopt
 from lib import melib
 import gvar
 import split
-import e2e_req
-import wa
-import iokpp
+import ptcl
+import e2e
 
-VERSION = "0.0.1-20180801"
+VERSION = "0.0.1-20180901"
 
 gFileIn = None
 gKeep_Files = 0  # used to control if delete the files created
@@ -47,10 +46,11 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '-h-i:-v-d-k',
                                    ['split', 'keep', 'debug', 'help', 'version', 'input=',
-                                    'e2e=', 'out=', 'pending', 'wa=', 'start=', 'end='])
+                                    'e2e=', 'out=', 'pending', 'wa=','protocol=', 'start=', 'end='])
     except getopt.GetoptError:
             melib.usage()
             sys.exit(2)
+    print(opts)
     for opt_name, opt_value in opts:
         if opt_name in ('-h', '--help'):
             print("\n%s version: %s" % (os.path.basename(sys.argv[0]), VERSION))
@@ -60,16 +60,28 @@ def main():
             print("%s: version %s" %
                   (os.path.basename(sys.argv[0]), VERSION))
             sys.exit(0)
-        if opt_name in ('-i', '--input'):
-            gFileIn = opt_value
-            melib.me_dbg("Input file is %s" % gFileIn)
         if opt_name in ('-d', '--debug'):
             melib.DEBUG = True
         if opt_name in ('-k', '--keep'):
             gKeep_Files = True
+        if opt_name in ('--out', 'out'):
+            gvar.gOutput_Dir_Default = opt_value
+            melib.mkdir(gvar.gOutput_Dir_Default)
+        if opt_name in ('--pending', 'pending'):
+            gvar.gRunning_pending_mode = True
+        if opt_name in ('-i', '--input'):
+            gFileIn = opt_value
+            melib.me_dbg("Input file is %s" % gFileIn)
         if opt_name in ('--split', 'split'):
             is_split = True
             gKeep_Files = True
+        if opt_name in ('--protocol', 'protocol'):
+            if opt_value in gvar.gProtocol_analyzer_support_list:
+                gvar.gProtocol_mode = opt_value
+                gvar.gProtocol_analyzer = True
+            else:
+                print("Unknown the protocol %s." % opt_value)
+                exit(1)
         if opt_name in ('--e2e', 'e2e'):
             is_e2e = True
             e2e_mode = opt_value
@@ -95,10 +107,7 @@ def main():
             else:
                 print("Error: The specified end index is not an valid integer.")
                 exit(1)
-        if opt_name in ('--out', 'out'):
-            gvar.gOutput_Dir_Default = opt_value
-        if opt_name in ('--pending', 'pending'):
-            gvar.gRunning_pending_mode = True
+
         if opt_name in ('--wa', 'wa'):
             is_wa = True
             wa_mode = opt_value
@@ -124,22 +133,27 @@ def main():
             print("Problem opening file: %s" % gFileIn)
             sys.exit(1)
 
-    """ mkdir the output folder """
-    melib.mkdir(gvar.gOutput_Dir_Default)
-    """ open the warning log file """
-    try:
-        melib.LogFD = open(gvar.gOutput_Dir_Default + "/warning.log", "wt")
-    except:
-        print("Open/Create Warning.log failed.")
-        melib.LogFD = 0
+    if is_e2e is True:
+        gvar.gOutput_dir_Raw_data = gvar.gOutput_Dir_Default + '/e2e/' +'raw_data/'
+        gvar.gOutput_dir_e2e = gvar.gOutput_Dir_Default + '/e2e/' + gvar.gE2E_mode + '/'
+        """ mkdir the output folder """
+        melib.mkdir(gvar.gOutput_dir_e2e)
+        melib.mkdir(gvar.gOutput_dir_Raw_data)
+        """ open the warning log file """
+        try:
+            melib.LogFD = open(gvar.gOutput_dir_e2e + "/warning.log", "wt")
+        except:
+            print("Open/Create Warning.log failed.")
+            melib.LogFD = 0
 
     if is_split:
         gPIDs_Files_dic = split.split_file_by_pid(lines)
         print("Split into %d files." % len(gPIDs_Files_dic))
         print(gPIDs_Files_dic)
-
     if is_e2e or is_wa:
-        iokpp.iokpp_main(lines, is_e2e, is_wa)
+        e2e.e2e_main(lines, is_e2e, is_wa)
+    if gvar.gProtocol_analyzer is True:
+        ptcl.ptcl_main(lines, opts)
 
     if not gKeep_Files:
         parser_post_dis()

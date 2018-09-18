@@ -15,6 +15,8 @@ import sys
 from lib import melib
 
 gOutput_Dir_Default = "./out/"
+gOutput_dir_Raw_data = "./out/raw/"
+gOutput_dir_e2e = "./out/"
 gCurr_line = 0
 """
 gRunning_pending_mode is used to specify the running mode of tool. 
@@ -79,6 +81,15 @@ gWA_RA_mode_by_pid = 'pid'
 gWA_RA_mode_by_task = 'task'
 gWA_RA_mode = gWA_RA_mode_by_task
 
+gProtocol_analyzer = False
+gProtocol_mode = None
+gProtocol_SCSI = 'scsi'
+gProtocol_UFS = 'ufs'
+
+gProtocol_analyzer_support_list = [
+    gProtocol_SCSI,
+    gProtocol_UFS
+]
 def analyzer_header_of_file(line):
 
     global gFtrace_log_fields

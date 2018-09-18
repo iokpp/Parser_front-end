@@ -105,29 +105,30 @@ gE2E_events_funcs_filter_dict = {
 #
 # User configure lists start
 """
-gIO_stack_track_events_list = [
-                 gvar.gReqEvent_end,,
-                 # --------Ext4-----------
-                 'ext4_file_write_iter',
-                 'ext4_sync_file_enter',
-                 'ext4_sync_file_exit',
-                 'ext4_direct_IO_enter',
-                 'generic_file_read_iter',
-                 'ext4_direct_IO_enter',
-                 'ext4_direct_IO_exit'
-                 # --------Block--------------
-                 'block_bio_remap',
-                 'block_bio_queue',
-                 'block_getrq',
-                 'block_plug',
-                 'block_unplug',
-                 'block_rq_insert',
-                 'block_rq_issue',
-                 'block_rq_complete',
-                 # ---------SCSI------------
-                 'scsi_dispatch_cmd_start',
-                 'scsi_dispatch_cmd_done'
-]
+Here is the list of events supported so far:
+#VFS layer
+    gvar.gReqEvent_start,
+    gvar.gReqEvent_end,
+#Ext4 FS
+     'ext4_file_write_iter',
+     'ext4_sync_file_enter',
+     'ext4_sync_file_exit',
+     'ext4_direct_IO_enter',
+     'generic_file_read_iter',
+     'ext4_direct_IO_enter',
+     'ext4_direct_IO_exit'
+ #Block Layer
+     'block_bio_remap',
+     'block_bio_queue',
+     'block_getrq',
+     'block_plug',
+     'block_unplug',
+     'block_rq_insert',
+     'block_rq_issue',
+     'block_rq_complete',
+ #SCSI layer
+     'scsi_dispatch_cmd_start',
+     'scsi_dispatch_cmd_done'
 """
 
 gE2E_trace_points_in_one_request = [

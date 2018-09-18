@@ -158,11 +158,11 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa):
             func_dict.clear()
 
 
-def iokpp_main(original_file_lines, is_e2e, is_wa):
+def e2e_main(original_file_lines, is_e2e, is_wa):
     line_by_line_parser(original_file_lines, is_e2e, is_wa)
     if is_e2e:
         if gvar.gE2E_mode == gvar.gE2E_mode_group_by_request:
-            e2e_req.e2e_main()
+            e2e_req.e2e_req_main()
         elif gvar.gE2E_mode == gvar.gE2E_mode_group_by_event:
             e2e_event.e2e_event_main()
         else:
