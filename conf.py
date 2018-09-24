@@ -149,21 +149,41 @@ gE2E_filter_in_one_request = [
 ]
 
 gE2E_durations_trace = [
-            gvar.gReqEvent_start + '-' + gvar.gReqEvent_end,
-            gvar.gReqEvent_start + '-' + 'block_bio_remap',
-            'block_bio_remap-block_rq_issue',
-            'block_rq_issue-scsi_dispatch_cmd_start',
-            'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done',
-            'scsi_dispatch_cmd_done-block_rq_complete',
-            'block_rq_complete-' + gvar.gReqEvent_end
+    gvar.gReqEvent_start + '-' + gvar.gReqEvent_end,
+    gvar.gReqEvent_start + '-' + 'block_bio_remap',
+    'block_bio_remap-block_rq_issue',
+    'block_rq_issue-scsi_dispatch_cmd_start',
+    'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done',
+    'scsi_dispatch_cmd_done-block_rq_complete',
+    'block_rq_complete-' + gvar.gReqEvent_end
 ]
 
 gE2E_HW_transfer_duration_define = (
-                'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done'
+    'scsi_dispatch_cmd_start-scsi_dispatch_cmd_done'
 )
 
 gWA_HW_transfer_completion_flags = [
-                'scsi_dispatch_cmd_done'
+    'scsi_dispatch_cmd_done'
 ]
 
+gPtcl_trace_points = {
+    gvar.gProtocol_SCSI: [
+        'scsi_dispatch_cmd_start',
+        'scsi_dispatch_cmd_done'
+    ],
+    gvar.gProtocol_UFS: [
+
+    ]
+}
+
+gIO_event_trace_points = {
+    'open':
+        [
+        'scsi_dispatch_cmd_start',
+        ],
+    'close':
+        [
+        'scsi_dispatch_cmd_done',
+        ]
+}
 # User defined list end

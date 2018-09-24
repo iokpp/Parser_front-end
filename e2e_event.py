@@ -602,6 +602,7 @@ def e2e_scattergram_pdf_show_by_pid():
         mean = round(np.mean(src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]), 6)
 
         list_data = src_dict[(pid, op, len_bytes, e2e_seq, e2e_event)]
+        # calculate display window width
         if ln > gvar.gDefault_graph_window_end_at_item:
             x = range(1, gvar.gDefault_graph_window_end_at_item + 1)
             y = [i * 1000 for i in list_data[gvar.gDefault_graph_window_start_from_item:
@@ -622,6 +623,7 @@ def e2e_scattergram_pdf_show_by_pid():
         else:
             color = label_line[e2e_seq]
 
+        # Finally draw data set
         plt.plot(x, y, color, linewidth=1.0, label=str(e2e_seq) + e2e_event)
 
     plt.axis([0, axis_x, 0, axis_y + 1])

@@ -14,13 +14,13 @@ import re
 import gvar
 import e2e_req
 import e2e_event
-import wa
+import wr
 from lib import melib
 from fs import ext4, vfs
 from scsi import scsi
 from block import block
 
-
+'''
 fields = ["None"]
 
 
@@ -101,10 +101,10 @@ def parsing_one_line(line):
     else:
         return False
 
-    ''' add this event '''
+    #add this event
     if function_dict is None:
-        ''' Goto next line, since this event/function
-        is not in the checked list.'''
+        #Goto next line, since this event/function
+        #is not in the checked list.
         return False
     else:
         # merge two dictionaries into one
@@ -156,10 +156,10 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa):
                     melib.me_warning(e)
 
             func_dict.clear()
+'''
 
-
-def e2e_main(original_file_lines, is_e2e, is_wa):
-    line_by_line_parser(original_file_lines, is_e2e, is_wa)
+def e2e_main(original_file_lines, is_e2e):
+    #line_by_line_parser(original_file_lines, is_e2e, is_wa)
     if is_e2e:
         if gvar.gE2E_mode == gvar.gE2E_mode_group_by_request:
             e2e_req.e2e_req_main()
@@ -168,5 +168,4 @@ def e2e_main(original_file_lines, is_e2e, is_wa):
         else:
             melib.me_error("Unkonw e2e_mode.")
             exit(1)
-    if is_wa:
-        wa.wa_main()
+

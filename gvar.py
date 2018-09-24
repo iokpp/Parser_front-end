@@ -81,6 +81,9 @@ gWA_RA_mode_by_pid = 'pid'
 gWA_RA_mode_by_task = 'task'
 gWA_RA_mode = gWA_RA_mode_by_task
 
+gIO_analyzer = False
+gIO_mode = None
+
 gProtocol_analyzer = False
 gProtocol_mode = None
 gProtocol_SCSI = 'scsi'

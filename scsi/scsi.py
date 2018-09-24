@@ -75,7 +75,7 @@ def parser_scsi_trace_event_str(funcs):
     ret_dict[gvar.gmenu_lba] = str(int(ret_dict[gvar.gmenu_lba]) * gvar.gSectorsPerBlock)
 
     ret_dict[gvar.gmenu_len] = funcs_list[funcs_list.index('txlen') + 1]
-    ret_dict[gvar.gmenu_len] = int(ret_dict[gvar.gmenu_len]) * gvar.gSCSI_LogicalBlockSize_Bytes
+    ret_dict[gvar.gmenu_len] = int(ret_dict[gvar.gmenu_len]) * gvar.gSCSI_LogicalBlockSize_Bytes  # convert to bytes
     return ret_dict
 
 

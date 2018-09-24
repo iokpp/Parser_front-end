@@ -263,7 +263,7 @@ def me_pprint_dict_scream(dictionary):
 
 
 def me_pprint_dict_file(file, dictionary):
-    if isinstance(dictionary, dict):
+    if isinstance(dictionary, dict) or isinstance(dictionary, list):
         try:
             with open(file, 'wt') as out:
                 #pp = pprint.PrettyPrinter(indent=2)
