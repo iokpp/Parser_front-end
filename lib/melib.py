@@ -221,6 +221,9 @@ def usage():
                         chart stop to show on output file.           
         --wa <pid|task>
                     Analyze the system level WA (write amplification)
+        --io
+                    Analyze the opened task amount in device, accessed chunk size
+                    and LBA distribution.
                                     
         --protocol [<scsi|nvme>]
                     SCSI and NVMe protocol analyzer.
