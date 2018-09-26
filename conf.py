@@ -167,11 +167,11 @@ gWA_HW_transfer_completion_flags = [
 ]
 
 gPtcl_trace_points = {
-    gvar.gProtocol_SCSI: [
+    gvar.gPtcl_SCSI: [
         'scsi_dispatch_cmd_start',
         'scsi_dispatch_cmd_done'
     ],
-    gvar.gProtocol_UFS: [
+    gvar.gPtcl_UFS: [
 
     ]
 }

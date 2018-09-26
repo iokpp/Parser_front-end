@@ -18,6 +18,7 @@ from lib import melib
 import gvar
 import split
 import IO
+import ptcl
 import e2e
 import re
 import gvar
@@ -115,7 +116,7 @@ def parsing_one_line(line):
     elif functions.startswith("block") or functions.startswith("blk"):
         # Block layer
         function_dict = block.blk_functions2dict_parser(functions)
-    elif functions.startswith("scsi") or functions.startswith("ufs"):
+    elif functions.startswith("scsi"):
         # SCSI
         function_dict = scsi.scsi_functions2dict_parser(functions)
     else:
@@ -181,6 +182,14 @@ def line_by_line_parser(original_file_lines, is_e2e, is_wa, is_IO):
                     melib.me_warning("Add item error!")
                     melib.me_warning(func_dict)
                     melib.me_warning(e)
+            if gvar.gPtcl_analyzer:
+                try:
+                    ptcl.add_to_ptcl_property_tree(func_dict)
+                except melib.DefinedExcepton as e:
+                    melib.me_warning("add to ptcl error!")
+                    melib.me_warning(func_dict)
+                    melib.me_warning(e)
+
             func_dict.clear()
 
 
@@ -196,11 +205,11 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '-h-i:-v-d-k',
                                    ['split', 'keep', 'debug', 'help', 'version', 'input=',
-                                    'e2e=', 'out=', 'pending', 'wa=', 'io', 'start=', 'end='])
+                                    'e2e=', 'out=', 'pending', 'wa=', 'io', 'ptcl=', 'start=', 'end='])
     except getopt.GetoptError:
             melib.usage()
             sys.exit(2)
-    print(opts)
+
     for opt_name, opt_value in opts:
         if opt_name in ('-h', '--help'):
             print("\n%s version: %s" % (os.path.basename(sys.argv[0]), VERSION))
@@ -227,14 +236,15 @@ def main():
             gKeep_Files = True
         if opt_name in ('--io', 'io'):
             gvar.gIO_analyzer = True
-            '''
-            if opt_value in gvar.gProtocol_analyzer_support_list:
-                #gvar.gProtocol_mode = opt_value
-                gvar.gIO_analyzer = True
+        if opt_name in ('--ptcl', 'ptcl'):
+
+            if opt_value in gvar.gPtcl_analyzer_support_list:
+                gvar.gPtcl_mode = opt_value
+                gvar.gPtcl_analyzer = True
+                print("Protocol option is %s" % opt_value)
             else:
                 print("Unknown the protocol %s." % opt_value)
                 exit(1)
-            '''
         if opt_name in ('--e2e', 'e2e'):
             is_e2e = True
             e2e_mode = opt_value
@@ -318,8 +328,10 @@ def main():
         e2e.e2e_main(lines, is_e2e)
     elif is_wa:
         wr.wr_main()
-    elif gvar.gIO_analyzer is True:
+    elif gvar.gIO_analyzer:
         IO.io_main(lines, opts)
+    elif gvar.gPtcl_analyzer:
+        ptcl.ptcl_main(lines, opts)
 
     if not gKeep_Files:
         parser_post_dis()
