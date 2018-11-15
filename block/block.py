@@ -78,7 +78,7 @@ def parser_block_trace_event_str(func):
 
         para_dict[gvar.gmenu_lba] = temp[temp.index('+') - 1]
         para_dict[gvar.gmenu_sectors] = temp[temp.index('+') + 1]
-        para_dict[gvar.gmenu_len] = int(para_dict[gvar.gmenu_sectors]) * gvar.gLogicalSectorSize_Bytes
+        para_dict[gvar.gmenu_len] = int(para_dict[gvar.gmenu_sectors]) * gvar.gLogicalSectorSize_Bytes # convert to bytes
 
     elif para_dict[gvar.gmenu_func] == 'block_unplug':
         para_dict[gvar.gmenu_reqs_unplug] = temp[temp.index('block_unplug:') + 1 + 1]

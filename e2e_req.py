@@ -660,7 +660,7 @@ def e2e_histogram_pdf_show_by_pid():
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        hist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+        hist_pdf = PdfPages(gvar.gOutput_dir_e2e + str(gvar.gDefault_graph_window_start_from_item) + '-' +
                             str(gvar.gDefault_graph_window_end_at_item) + "-E2E_histogram_Per_PID_GroupinByReq.pdf")
     except:
         melib.me_warning("Create hist_pdf file failed.")
@@ -728,7 +728,7 @@ def e2e_scattergram_pdf_show_by_pid():
     label_line = ['r.', 'b.', 'y.', 'g.', 'm.', 'c:', 'r-', 'b-', 'y-', 'g-', 'm--', 'c--']
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
     try:
-        dist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+        dist_pdf = PdfPages(gvar.gOutput_dir_e2e + str(gvar.gDefault_graph_window_start_from_item) + '-' +
                             str(gvar.gDefault_graph_window_end_at_item) + "-E2E_scattergram_Per_PID_GroupingByReq.pdf")
     except:
         melib.me_warning("Create dist_pdf file failed.")
@@ -811,7 +811,7 @@ def e2e_histogram_pdf_show_by_op_len():
     op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
     try:
-        hist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+        hist_pdf = PdfPages(gvar.gOutput_dir_e2e + str(gvar.gDefault_graph_window_start_from_item) + '-' +
                             str(gvar.gDefault_graph_window_end_at_item) + "-E2E_histogram_Per_Chunk_GroupingByReq.pdf")
     except:
         melib.me_warning("Create sgE2E_histogram_by_op_len file failed.")
@@ -886,7 +886,7 @@ def e2e_scattergram_pdf_show_by_op_len():
     label_line = ['r.', 'b.', 'y.', 'g.', 'm.', 'c:', 'r-', 'b-', 'y-', 'g-', 'm--', 'c--']
     op_len_seq_event_tuple_list = sorted(src_dict.keys())
     try:
-        dist_pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+        dist_pdf = PdfPages(gvar.gOutput_dir_e2e + str(gvar.gDefault_graph_window_start_from_item) + '-' +
                             str(gvar.gDefault_graph_window_end_at_item) + "-E2E_scattergram_Per_Chunk_GroupingByReq.pdf")
     except:
         melib.me_warning("Create sgE2E_scattergram_by_op_len file failed.")
@@ -973,7 +973,7 @@ def e2e_stat_analyzer_by_pid():
 
     pid_op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
-    fd = open(gvar.gOutput_Dir_Default+"Report_by_pid.log", 'w')
+    fd = open(gvar.gOutput_dir_e2e+"Report_by_pid.log", 'w')
     bak_stdout = sys.stdout
     sys.stdout = fd
     for (pid, op, len_bytes, e2e_seq, e2e_event) in pid_op_len_seq_event_tuple_list:
@@ -1018,7 +1018,7 @@ def e2e_stat_analyzer_by_op_len():
 
     op_len_seq_event_tuple_list = sorted(src_dict.keys())
 
-    fd = open(gvar.gOutput_Dir_Default+"Report_by_op_len.log", 'w')
+    fd = open(gvar.gOutput_dir_e2e+"Report_by_op_len.log", 'w')
     bak_stdout = sys.stdout
     sys.stdout = fd
     for (op, len_bytes, e2e_seq, e2e_event) in op_len_seq_event_tuple_list:
@@ -1053,10 +1053,16 @@ def e2e_stat_analyzer_by_op_len():
 def HW_SW_division_PieChart_pdf_show():
 
     if not sgE2E_sw_distribution_dict:
+        melib.me_error("No sgE2E_sw_distribution_dict,"
+                       "please check if input log integrality.")
         return
     if not sgE2E_hw_distribution_dict:
+        melib.me_error("No sgE2E_hw_distribution_dict,"
+                       "please check if input log integrality.")
         return
     if not sgE2E_duratinon_distribution_Per_Chunk_dic:
+        melib.me_error("No sgE2E_duratinon_distribution_Per_Chunk_dic,"
+                       "please check if input log integrality.")
         return
     hw_dict = sgE2E_hw_distribution_dict
     sw_dict = sgE2E_sw_distribution_dict
@@ -1065,11 +1071,12 @@ def HW_SW_division_PieChart_pdf_show():
     colors = ["blue", "red", "coral", "green", "yellow", "orange"]
     
     try:
-        pdf = PdfPages(gvar.gOutput_Dir_Default + str(gvar.gDefault_graph_window_start_from_item) + '-' +
+        pdf = PdfPages(gvar.gOutput_dir_e2e + str(gvar.gDefault_graph_window_start_from_item) + '-' +
                        str(gvar.gDefault_graph_window_end_at_item)+"-E2E_HW-SW_division_PieChart.pdf")
     except:
         melib.me_warning("Create sgE2E_hw_sf_division file failed.")
         return
+
     """  Step 1: Hardware and software duration distribution """
     for (op, length) in op_len_tuple_list:
 
@@ -1085,7 +1092,7 @@ def HW_SW_division_PieChart_pdf_show():
             hw_y = [i * 1000 for i in hw_list_data]  # convert us to ms
             sw_y = [i * 1000 for i in sw_list_data]
             x = np.arange(len(hw_list_data)) + 1
-
+            # draw HW and SW distribution
             plt.figure()
             plt.plot(x, hw_y, 'g-', alpha=0.75, linewidth=1.0, label='HW')
             plt.plot(x, sw_y, 'r-', alpha=0.75, linewidth=1.0, label='SW')
@@ -1098,71 +1105,80 @@ def HW_SW_division_PieChart_pdf_show():
             pdf.savefig()
             plt.close()
 
-            hw_mean = round(np.mean(hw_dict[(op, length)]), 6)
-            hw_mean = hw_mean * 1000000  # convert to integer
-            sw_mean = round(np.mean(sw_dict[(op, length)]), 6)
-            sw_mean = sw_mean * 1000000  # convert to integer
+            # draw HW and SW division Pie chart
+            labels_pie = []
+            mean = round(np.mean(hw_dict[(op, length)]), 6)
+            hw_mean = mean * 1000000  # convert to integer
+            labels_pie.append(str(mean*1000) + 'ms' + '/' + str(len(hw_dict[(op, length)])) + 'items')
+            mean = round(np.mean(sw_dict[(op, length)]), 6)
+            labels_pie.append(str(mean * 1000) + 'ms' + '/' + str(len(sw_dict[(op, length)]))+'items')
+            sw_mean = mean * 1000000  # convert to integer
             pie_x = [hw_mean, sw_mean]
-            pie_lables = ['HW', 'SW']
+            legend_labels = ['HW', 'SW']
             colors = ['green', 'red']
             plt.figure()
-            plt.pie(pie_x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, colors=colors)
+            plt.pie(pie_x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, colors=colors, labels=labels_pie)
             plt.title(title)
             plt.axis('equal')
-            plt.legend(fontsize=10, loc='best', labels=pie_lables)
+            plt.legend(fontsize=10, loc='best', labels=legend_labels)
             pdf.savefig()
             plt.close()
+
     """
     Step 2: percentage pie chart of each layer duration 
     """
     curr_op = 'none'
     curr_len_bytes = 0
     op_len_seq_event_tuple_list = sorted(distr_dict.keys())
-    labels = []
+    legend_labels = []
+    pie_lebels = []
     quants = []
     items = 0
     for (op, len_bytes, e2e_seq, e2e_event) in op_len_seq_event_tuple_list:
         if curr_op is not 'none':
             if curr_op is not op or curr_len_bytes != len_bytes:
                 if items > 1:
-                    x = [i * 1000000 for i in quants]
+                    x = [i * 1000000 for i in quants]  # convert to integer
                     plt.figure()
-                    plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, startangle=90)
+                    plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, startangle=90, labels=pie_lebels)
                     plt.title(curr_op + '/' + str(curr_len_bytes))
                     plt.axis('equal')
-                    plt.legend(fontsize=5, labels=labels)
+                    plt.legend(fontsize=5, labels=legend_labels)
                     pdf.savefig()
                     plt.close()
                 quants = []
-                labels = []
+                legend_labels = []
+                pie_lebels = []
                 items = 0
 
-        if e2e_seq != 0:  # if e2e_seq is 0, this is a total duration
-            labels.append(e2e_event)
+        if e2e_seq != 0:  # e2e_seq 0 is total duration, we skip
+            legend_labels.append(e2e_event)
             mean = round(np.mean(distr_dict[(op, len_bytes, e2e_seq, e2e_event)]), 6)
+            pie_lebels.append(str(mean*1000) + 'ms/' +
+                                 str(len(distr_dict[(op, len_bytes, e2e_seq, e2e_event)])) + 'items')
             quants.append(mean)
             items += 1
             curr_op = op
             curr_len_bytes = len_bytes
-
-    if quants and labels:
+    # Draw the last one
+    if quants and legend_labels:
         if items > 1:
             x = [i * 1000000 for i in quants]  # convert float to int
             plt.figure()
-            plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, startangle=90)
+            plt.pie(x, autopct='%1.1f%%', pctdistance=0.8, shadow=True, startangle=90, labels=pie_lebels)
             plt.axis('equal')
             plt.title(curr_op + '/' + str(curr_len_bytes))
-            plt.legend(fontsize=5, labels=labels)
+            plt.legend(fontsize=5, labels=legend_labels)
             pdf.savefig()
             plt.close()
 
     pdf.close()
 
 
-def e2e_main():
+def e2e_req_main():
 
     if sgEvent_Property_DataBank_groupbyrequest and sgPID_list:
-        melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+ "00-Event_Property_RawDataBank_GroupingByReq.log",
+        melib.me_pprint_dict_file(gvar.gOutput_dir_Raw_data + "00-Event_Property_RawDataBank_GroupingByReq.log",
                                   sgEvent_Property_DataBank_groupbyrequest)
 
         '''
@@ -1182,7 +1198,7 @@ def e2e_main():
 
         if sgE2E_Duration_per_request_DataBank:
             #melib.me_pprint_dict_scream(sgE2E_Duration_per_request_DataBank)
-            melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"01-E2E_Duration_per_request_DataBank_GroupingByReq.log",
+            melib.me_pprint_dict_file(gvar.gOutput_dir_Raw_data + "/01-E2E_Duration_per_request_DataBank_GroupingByReq.log",
                                       sgE2E_Duration_per_request_DataBank)
             #melib.me_pickle_save_obj("./01-pickle-sgE2E_Duration_per_request_DataBank.log",
             #                         sgE2E_Duration_per_request_DataBank)
@@ -1193,25 +1209,25 @@ def e2e_main():
 
             if sgE2E_duration_distribution_Per_PID_dic:  # analyze and generate the result file divided by pid
                 #melib.me_pprint_dict_scream(sgE2E_duration_distribution_Per_PID_dic)
-                melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-E2E_duration_dist_Per_PID_GroupingByReq.log",
+                melib.me_pprint_dict_file(gvar.gOutput_dir_Raw_data + "/02-E2E_Duration_dist_Per_PID_GroupingByReq.log",
                                           sgE2E_duration_distribution_Per_PID_dic)
                 """ Step 3 """
-                print("Step 3-1: analyzing I/O status by pid ......")
+                print("Step 3-1: analyzing I/O status per pid ......")
                 e2e_stat_analyzer_by_pid()
-                print("Step 3-2: outputting scattergram pdf by pid ......")
+                print("Step 3-2: outputting scattergram pdf per pid ......")
                 e2e_scattergram_pdf_show_by_pid()
-                print("Step 3-3: outputting histogram pdf by pid ......")
+                print("Step 3-3: outputting histogram pdf per pid ......")
                 e2e_histogram_pdf_show_by_pid()
 
             if sgE2E_duratinon_distribution_Per_Chunk_dic:  # analyze and generate the result file divided by op+len
-                melib.me_pprint_dict_file(gvar.gOutput_Dir_Default+"./02-sgE2E_duration_dist_Per_Chunk_GroupingByReq.log",
+                melib.me_pprint_dict_file(gvar.gOutput_dir_Raw_data + "/02-E2E_Duration_dist_Per_Chunk_GroupingByReq.log",
                                           sgE2E_duratinon_distribution_Per_Chunk_dic)
                 """ Step 4 """
-                print("Step 4-1: analyzing I/O status by op_len ......")
+                print("Step 4-1: analyzing I/O status per op_len ......")
                 e2e_stat_analyzer_by_op_len()
-                print("Step 4-2: outputting scattergram pdf by op_len ......")
+                print("Step 4-2: outputting scattergram pdf per op_len ......")
                 e2e_scattergram_pdf_show_by_op_len()
-                print("Step 4-3: outputting histogram pdf by op_len ......")
+                print("Step 4-3: outputting histogram pdf per op_len ......")
                 e2e_histogram_pdf_show_by_op_len()
         """ Step 5 """
         print("Step 5: SW and HW duration division ....")

@@ -20,7 +20,7 @@ host_no=0 channel=0 id=0 lun=3 data_sgl=16 prot_sgl=0 prot_op=SCSI_PROT_NORMAL t
 cmnd=(WRITE_10 lba=5026608 txlen=16 protect=0 raw=2a 00 00 4c b3 30 00 00 10 00)
 '''
 
-
+'''
 def parser_scsi_trace_event(event):
     para_dict = {}
     delimiter = '\s\('
@@ -48,6 +48,7 @@ def parser_scsi_trace_event(event):
     para_dict['len'] = str(long(str_len.split('=')[1]) * gvar.gSCSI_LogicalBlockSize_Bytes )
     return para_dict
 
+'''
 
 '''
 scsi_dispatch_cmd_done: host_no=0 channel=0 id=0 lun=3 data_sgl=16 prot_sgl=0 prot_op=SCSI_PROT_NORMAL \
@@ -62,7 +63,7 @@ def parser_scsi_trace_event_str(funcs):
 
     ret_dict[gvar.gmenu_events] = funcs_list[0]
     ret_dict[gvar.gmenu_func] = funcs_list[0]
-    ret_dict[gvar.gmenu_op] = funcs_list[funcs_list.index('cmnd') + 1]
+    ret_dict[gvar.gmenu_op] = ret_dict[gvar.gScsi_cmd] = funcs_list[funcs_list.index('cmnd') + 1]
 
     if ret_dict[gvar.gmenu_op].startswith('WRITE'):
         ret_dict[gvar.gmenu_op] = gvar.gWrite_Req
@@ -75,7 +76,14 @@ def parser_scsi_trace_event_str(funcs):
     ret_dict[gvar.gmenu_lba] = str(int(ret_dict[gvar.gmenu_lba]) * gvar.gSectorsPerBlock)
 
     ret_dict[gvar.gmenu_len] = funcs_list[funcs_list.index('txlen') + 1]
-    ret_dict[gvar.gmenu_len] = int(ret_dict[gvar.gmenu_len]) * gvar.gSCSI_LogicalBlockSize_Bytes
+    ret_dict[gvar.gmenu_len] = int(ret_dict[gvar.gmenu_len]) * gvar.gSCSI_LogicalBlockSize_Bytes  # convert to bytes
+
+    ret_dict[gvar.gScsi_host_no] = funcs_list[funcs_list.index('host_no') + 1]
+    ret_dict[gvar.gScsi_channel] = funcs_list[funcs_list.index('channel') + 1]
+    ret_dict[gvar.gScsi_id] = funcs_list[funcs_list.index('id') + 1]
+    ret_dict[gvar.gScsi_lun] = funcs_list[funcs_list.index('lun') + 1]
+    ret_dict[gvar.gScsi_raw] = funcs_list[funcs_list.index('raw') + 1:]
+
     return ret_dict
 
 

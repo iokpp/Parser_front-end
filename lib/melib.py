@@ -208,31 +208,32 @@ def usage():
                     specified input log file.
                     There are two kinds of group mode, "event" and "request".
                
-               --e2e request: The all events associated with one I/O request, will
-                               be grouped together, then calculate each stage time
-                               consumption.
-               --e2e event:    This will just group the same e2e (from event A to
-                               event B) together, and then calculate its time consumption.
-        --start <start index>
-                    Specify from which index the histogram/bar/distribution
-                    chart start to show on output file.
-                    
-        --end <end index>
-                    Specify from which index the histogram/bar/distribution
-                    chart stop to show on output file.
-                    
+            --e2e request: The all events associated with one I/O request, will
+                           be grouped together, then calculate each stage time
+                           consumption.
+            --e2e event:   This will just group the same e2e (from event A to
+                           event B) together, and then calculate its time consumption.
+                --start <start index>
+                        Specify from which index the histogram/bar/distribution
+                        chart start to show on output file.
+                --end <end index>
+                        Specify from which index the histogram/bar/distribution
+                        chart stop to show on output file.           
         --wa <pid|task>
                     Analyze the system level WA (write amplification)
-                                      
+        --io
+                    Analyze the opened task amount in device, accessed chunk size
+                    and LBA distribution.
+                                    
         --protocol [<scsi|nvme>]
                     SCSI and NVMe protocol analyzer.
     Eg:
         1. Split the log into several file according to PID.
-        ftparser -i ftrace.log  --split
+        IOparser -i ftrace.log  --split
         2. Parse the log and show its record frm index 1 to 100
-        ftparser -i ftrace.log  --e2e event --start 1 --end 100 --out ./out
+        IOparser -i ftrace.log  --e2e event --start 1 --end 100 --out ./out
         3. Calculate the WA in the log
-        ftparser -i ftrace.log  --wa task
+        IOparser -i ftrace.log  --wa task
         
     """ % os.path.basename(sys.argv[0]))
     sys.exit(1)
@@ -265,7 +266,7 @@ def me_pprint_dict_scream(dictionary):
 
 
 def me_pprint_dict_file(file, dictionary):
-    if isinstance(dictionary, dict):
+    if isinstance(dictionary, dict) or isinstance(dictionary, list):
         try:
             with open(file, 'wt') as out:
                 #pp = pprint.PrettyPrinter(indent=2)

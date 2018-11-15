@@ -15,6 +15,8 @@ import sys
 from lib import melib
 
 gOutput_Dir_Default = "./out/"
+gOutput_dir_Raw_data = "./out/raw/"
+gOutput_dir_e2e = "./out/"
 gCurr_line = 0
 """
 gRunning_pending_mode is used to specify the running mode of tool. 
@@ -36,6 +38,7 @@ gSCSI_LogicalBlockSize_Bytes = 4096  # the default logical block size in SCSI la
 gLogicalSectorSize_Bytes = 512       # the default logical sector size in block layer
 gSectorsPerBlock = gSCSI_LogicalBlockSize_Bytes / gLogicalSectorSize_Bytes  # how many sectors per block
 
+# define the general string flags
 gmenu_task = 'Task'
 gmenu_PID = 'PID'
 gmenu_OriginalPid = 'OrigPID'
@@ -51,6 +54,17 @@ gmenu_blocks = 'Blocks'
 gmenu_req_seq = 'Request_sequence'
 gmenu_event_seq = 'Event_sequence'
 gmenu_reqs_unplug = 'plug_reqs_unplug'
+
+
+# the scsi related event string flags
+gScsi_host_no = 'host_no'
+gScsi_channel = 'channel'
+gScsi_id = 'id'
+gScsi_lun = 'lun'
+gScsi_cmd = 'cmnd'
+gScsi_event = 'scsi_event'
+gScsi_raw = 'raw'
+
 
 gMax = 'MAX'
 gMin = 'MIN'
@@ -79,6 +93,18 @@ gWA_RA_mode_by_pid = 'pid'
 gWA_RA_mode_by_task = 'task'
 gWA_RA_mode = gWA_RA_mode_by_task
 
+gIO_analyzer = False
+gIO_mode = None
+
+gPtcl_analyzer = False
+gPtcl_mode = None
+gPtcl_SCSI = 'scsi'
+gPtcl_UFS = 'ufs'
+
+gPtcl_analyzer_support_list = [
+    gPtcl_SCSI,
+    gPtcl_UFS
+]
 def analyzer_header_of_file(line):
 
     global gFtrace_log_fields

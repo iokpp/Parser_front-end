@@ -37,37 +37,16 @@ sgRemap_read = dict()
 
 def add_to_VFS_write_dict(task_str, bytes_len):
     sgWA_VFS_write.setdefault(task_str, []).append(bytes_len)
-    '''
-    if not sgWA_VFS_write:
-        sgWA_VFS_write[task_str] = [bytes_len]
-    elif task_str not in sgWA_VFS_write.keys():
-        sgWA_VFS_write[task_str] = [bytes_len]
-    elif task_str in sgWA_VFS_write.keys():
-        sgWA_VFS_write[task_str].append(bytes_len)
-    '''
+
 
 
 def add_to_HW_write_dict(task_str, bytes_len):
     sgWA_HW_write.setdefault(task_str, []).append(bytes_len)
-    '''
-    if not sgWA_HW_write:
-        sgWA_HW_write[task_str] = [bytes_len]
-    elif task_str not in sgWA_HW_write.keys():
-        sgWA_HW_write[task_str] = [bytes_len]
-    elif task_str in sgWA_HW_write.keys():
-        sgWA_HW_write[task_str].append(bytes_len)
-    '''
+
 
 def add_remap_write_dict(task_str, bytes_len):
     sgRemap_write.setdefault(task_str, []).append(bytes_len)
-    '''
-    if not sgRemap_write:
-        sgRemap_write[task_str] = [bytes_len]
-    elif task_str not in sgRemap_write.keys():
-        sgRemap_write[task_str] = [bytes_len]
-    elif task_str in sgRemap_write.keys():
-        sgRemap_write[task_str].append(bytes_len)
-    '''
+
 
 
 def add_to_wa_property_tree(funcs):
@@ -107,7 +86,7 @@ def print_entry():
     #print("     |")
     print("     ")
 
-def wa_main():
+def wr_main():
     """
     The WA(write amplification) is based on the below definition.
     https://en.wikipedia.org/wiki/Write_amplification
