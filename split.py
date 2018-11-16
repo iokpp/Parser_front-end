@@ -12,12 +12,12 @@
 
 import sys
 import re
-from fs import ext4
-from block import block
-from scsi import scsi
 import gvar
 import conf
 from lib import melib
+from fs import ext4
+from block import block
+from scsi import scsi
 
 sgSCSI_BLOCK_SIZE_BYTE = gvar.gSCSI_LogicalBlockSize_Bytes
 sgBLOCK_SECTOR_SIZE_BYTE = gvar.gLogicalSectorSize_Bytes
