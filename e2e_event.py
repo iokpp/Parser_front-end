@@ -12,19 +12,19 @@
 import sys
 import os
 import re
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.mlab as mlab
-from matplotlib.backends.backend_pdf import PdfPages
 import json
 import pprint
-from lib import melib
 import gvar
 import conf
 from fs import vfs
 from fs import ext4
 from block import block
 from scsi import scsi
+from lib import melib
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
+from matplotlib.backends.backend_pdf import PdfPages
 
 line_no = 0  # the line number which is now analyzed on.
 sgSubtrahend = 0
