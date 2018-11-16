@@ -14,7 +14,6 @@
 import sys
 import os
 import getopt
-from lib import melib
 import gvar
 import split
 import IO
