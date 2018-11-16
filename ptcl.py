@@ -9,11 +9,10 @@
 # 2018-Jun-1:Initial version by Bean Huo beanhuo@micron.com
 #
 
-from lib import melib
 import gvar
 import conf
 import csv
-
+from lib import melib
 
 sgPtcl_output_dir = ''
 
