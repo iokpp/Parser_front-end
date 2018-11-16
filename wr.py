@@ -14,9 +14,9 @@
 import sys
 import os
 import re
-from lib import melib
 import gvar
 import conf
+from lib import melib
 
 #{'task name': [4096, ...], ...}
 sgWA_VFS_write = dict()
