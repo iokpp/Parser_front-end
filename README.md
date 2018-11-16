@@ -90,10 +90,8 @@ Usage
 
 TODO list
 ============
- * Add SCSI protocol analyzer
-    - 1. multiple tasks distribution
-    - 2. accessing chunk size distribution
-    - 3. LBA
+    - 1. Add the UFS events
+    - 2. Add the Nvme support
 
 
 FIXME list
